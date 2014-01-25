@@ -40,6 +40,7 @@ __authors__  = (
     'Michael Orlitzky',
     'Chris Gahan',
     'Saimadhav Heblikar',
+    'Taeyeon Mori',
 )
 
 __license__ = 'Public Domain'
@@ -82,6 +83,7 @@ from .postprocessor import (
     FFmpegExtractAudioPP,
     FFmpegEmbedSubtitlePP,
     XAttrMetadataPP,
+    AdvancedAVPP,
 )
 
 
@@ -424,7 +426,7 @@ def parseOpts(overrideArguments=None):
     postproc.add_option('--audio-quality', metavar='QUALITY', dest='audioquality', default='5',
             help='ffmpeg/avconv audio quality specification, insert a value between 0 (better) and 9 (worse) for VBR or a specific bitrate like 128K (default 5)')
     postproc.add_option('--recode-video', metavar='FORMAT', dest='recodevideo', default=None,
-            help='Encode the video to another format if necessary (currently supported: mp4|flv|ogg|webm)')
+            help='Encode the video to another format if necessary (currently supported: mp4|flv|ogg|webm|mkv)')
     postproc.add_option('-k', '--keep-video', action='store_true', dest='keepvideo', default=False,
             help='keeps the video file on disk after the post-processing; the video is erased by default')
     postproc.add_option('--no-post-overwrites', action='store_true', dest='nopostoverwrites', default=False,
@@ -439,6 +441,8 @@ def parseOpts(overrideArguments=None):
         help='Prefer avconv over ffmpeg for running the postprocessors (default)')
     postproc.add_option('--prefer-ffmpeg', action='store_true', dest='prefer_ffmpeg',
         help='Prefer ffmpeg over avconv for running the postprocessors')
+    postproc.add_option('--use-aavpp', action='store_true', dest='use_aavpp',
+        help='Use the new AdvancedAVPP PostProcessor for most work. (experimental)')
 
 
     parser.add_option_group(general)
@@ -620,7 +624,7 @@ def _real_main(argv=None):
         if not opts.audioquality.isdigit():
             parser.error(u'invalid audio quality specified')
     if opts.recodevideo is not None:
-        if opts.recodevideo not in ['mp4', 'flv', 'webm', 'ogg']:
+        if opts.recodevideo not in ['mp4', 'flv', 'webm', 'ogg', 'mkv']:
             parser.error(u'invalid video recode format specified')
     if opts.date is not None:
         date = DateRange.day(opts.date)
@@ -735,6 +739,7 @@ def _real_main(argv=None):
         'include_ads': opts.include_ads,
         'default_search': opts.default_search,
         'youtube_include_dash_manifest': opts.youtube_include_dash_manifest,
+        'use_aavpp': opts.use_aavpp,
     }
 
     with YoutubeDL(ydl_opts) as ydl:
@@ -743,6 +748,25 @@ def _real_main(argv=None):
 
         # PostProcessors
         # Add the metadata pp first, the other pps will copy it
+        if opts.use_aavpp:
+            aavpp_opts = {
+                "add_metadata": opts.addmetadata,
+                "repack_container": opts.recodevideo,
+                "embed_subs": opts.embedsubtitles,
+                "subs_codec": opts.subtitlesformat,
+                "keep_originals": opts.keepvideo,
+                "prefer_ffmpeg": opts.prefer_ffmpeg,
+            }
+
+            aav = AdvancedAVPP(options=aavpp_opts)
+            aav._detect_progs() # Check for executables
+            ydl.add_post_processor(aav)
+
+            # Disable FFmpeg PPs
+            opts.addmetadata = False
+            opts.recodevideo = False
+            opts.embedsubtitles = False
+
         if opts.addmetadata:
             ydl.add_post_processor(FFmpegMetadataPP())
         if opts.extractaudio:

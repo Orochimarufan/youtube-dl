@@ -930,14 +930,18 @@ class YoutubeDL(object):
                     if info_dict.get('requested_formats') is not None:
                         downloaded = []
                         success = True
-                        merger = FFmpegMergerPP(self)
-                        if not merger._get_executable():
-                            postprocessors = []
-                            self.report_warning('You have requested multiple '
-                                'formats but ffmpeg or avconv are not installed.'
-                                ' The formats won\'t be merged')
+                        if not self.params.get("use_aavpp"):
+                            merger = FFmpegMergerPP(self)
+                            if not merger._get_executable():
+                                postprocessors = []
+                                self.report_warning('You have requested multiple '
+                                    'formats but ffmpeg or avconv are not installed.'
+                                    ' The formats won\'t be merged')
+                            else:
+                                postprocessors = [merger]
                         else:
-                            postprocessors = [merger]
+                            # Gets added in main()
+                            postprocessors = []
                         for f in info_dict['requested_formats']:
                             new_info = dict(info_dict)
                             new_info.update(f)

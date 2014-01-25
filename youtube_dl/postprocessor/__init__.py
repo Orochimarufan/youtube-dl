@@ -7,6 +7,7 @@ from .ffmpeg import (
     FFmpegEmbedSubtitlePP,
 )
 from .xattrpp import XAttrMetadataPP
+from .aav import AdvancedAVPP
 
 __all__ = [
     'FFmpegMergerPP',
@@ -15,4 +16,5 @@ __all__ = [
     'FFmpegExtractAudioPP',
     'FFmpegEmbedSubtitlePP',
     'XAttrMetadataPP',
+    'AdvancedAVPP'
 ]
