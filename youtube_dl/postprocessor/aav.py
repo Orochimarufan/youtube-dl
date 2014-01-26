@@ -219,7 +219,14 @@ class AdvancedAVPP(PostProcessor):
         elif info.get("uploader_id") is not None:
             set_meta("author", info["uploader_id"])
 
+        if info.get("webpage_url") is not None:
+            set_meta("url", info["webpage_url"])
+
+        if info.get("description") is not None:
+            set_meta("description", info["description"])
+
         set_meta("encoded_by", "youtube-dl %s" % __version__)
+        set_meta("copyright", "the original artist")
 
     def embed_subs(self, this, information):
         # Get default sub format
@@ -371,11 +378,10 @@ class AdvancedAVPP(PostProcessor):
 
         # Repacking
         if self._opts.get("repack_container"):
-            this["container"] = self._opts["repack_container"]
+            this["container"] = information["ext"] = self._opts["repack_container"]
             task_list.append("repack")
 
-        basename = information["filepath"].rsplit(u'.')[0]
-        filename = "%s.%s" % (basename, this["container"])
+        filename = self._downloader.prepare_filename(information) # We want to integrate the new %(ext) properly.
         this["output"] = filename + ".aavtemp"
 
         # Embed subtitles
@@ -399,7 +405,6 @@ class AdvancedAVPP(PostProcessor):
         # Export information
         information["filepath"] = filename
         information["filename"] = filename.rsplit(u'/', 1)[-1]
-        information["ext"] = information["format"] = this["container"]
 
         # NOTE: Should it return False?
         return True, information
