@@ -23,7 +23,6 @@ from ..utils import (
 class BrightcoveIE(InfoExtractor):
     _VALID_URL = r'https?://.*brightcove\.com/(services|viewer).*\?(?P<query>.*)'
     _FEDERATED_URL_TEMPLATE = 'http://c.brightcove.com/services/viewer/htmlFederated?%s'
-    _PLAYLIST_URL_TEMPLATE = 'http://c.brightcove.com/services/json/experience/runtime/?command=get_programming_for_experience&playerKey=%s'
 
     _TESTS = [
         {
@@ -70,7 +69,7 @@ class BrightcoveIE(InfoExtractor):
                 'description': 'md5:363109c02998fee92ec02211bd8000df',
                 'uploader': 'National Ballet of Canada',
             },
-        },
+        }
     ]
 
     @classmethod
@@ -131,6 +130,11 @@ class BrightcoveIE(InfoExtractor):
         """Try to extract the brightcove url from the wepbage, returns None
         if it can't be found
         """
+
+        url_m = re.search(r'<meta\s+property="og:video"\s+content="(http://c.brightcove.com/[^"]+)"', webpage)
+        if url_m:
+            return url_m.group(1)
+
         m_brightcove = re.search(
             r'''(?sx)<object
             (?:
@@ -183,8 +187,9 @@ class BrightcoveIE(InfoExtractor):
         return self._extract_video_info(video_info)
 
     def _get_playlist_info(self, player_key):
-        playlist_info = self._download_webpage(self._PLAYLIST_URL_TEMPLATE % player_key,
-                                               player_key, 'Downloading playlist information')
+        info_url = 'http://c.brightcove.com/services/json/experience/runtime/?command=get_programming_for_experience&playerKey=%s' % player_key
+        playlist_info = self._download_webpage(
+            info_url, player_key, 'Downloading playlist information')
 
         json_data = json.loads(playlist_info)
         if 'videoList' not in json_data:

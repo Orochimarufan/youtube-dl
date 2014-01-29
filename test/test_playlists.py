@@ -33,6 +33,7 @@ from youtube_dl.extractor import (
     ImdbListIE,
     KhanAcademyIE,
     EveryonesMixtapeIE,
+    RutubeChannelIE,
 )
 
 
@@ -195,11 +196,11 @@ class TestPlaylists(unittest.TestCase):
     def test_imdb_list(self):
         dl = FakeYDL()
         ie = ImdbListIE(dl)
-        result = ie.extract('http://www.imdb.com/list/sMjedvGDd8U')
+        result = ie.extract('http://www.imdb.com/list/JFs9NWw6XI0')
         self.assertIsPlaylist(result)
-        self.assertEqual(result['id'], 'sMjedvGDd8U')
-        self.assertEqual(result['title'], 'Animated and Family Films')
-        self.assertTrue(len(result['entries']) >= 48)
+        self.assertEqual(result['id'], 'JFs9NWw6XI0')
+        self.assertEqual(result['title'], 'March 23, 2012 Releases')
+        self.assertEqual(len(result['entries']), 7)
 
     def test_khanacademy_topic(self):
         dl = FakeYDL()
@@ -219,6 +220,14 @@ class TestPlaylists(unittest.TestCase):
         self.assertEqual(result['id'], 'm7m0jJAbMQi')
         self.assertEqual(result['title'], 'Driving')
         self.assertEqual(len(result['entries']), 24)
+        
+    def test_rutube_channel(self):
+        dl = FakeYDL()
+        ie = RutubeChannelIE(dl)
+        result = ie.extract('http://rutube.ru/tags/video/1409')
+        self.assertIsPlaylist(result)
+        self.assertEqual(result['id'], '1409')
+        self.assertTrue(len(result['entries']) >= 34)
 
 
 if __name__ == '__main__':

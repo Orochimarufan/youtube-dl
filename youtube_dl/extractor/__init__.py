@@ -27,6 +27,7 @@ from .cbs import CBSIE
 from .channel9 import Channel9IE
 from .cinemassacre import CinemassacreIE
 from .clipfish import ClipfishIE
+from .cliphunter import CliphunterIE
 from .clipsyndicate import ClipsyndicateIE
 from .cmt import CMTIE
 from .cnn import CNNIE
@@ -47,6 +48,7 @@ from .depositfiles import DepositFilesIE
 from .dotsub import DotsubIE
 from .dreisat import DreiSatIE
 from .defense import DefenseGouvFrIE
+from .discovery import DiscoveryIE
 from .dropbox import DropboxIE
 from .ebaumsworld import EbaumsWorldIE
 from .ehow import EHowIE
@@ -83,6 +85,7 @@ from .googlesearch import GoogleSearchIE
 from .hark import HarkIE
 from .hotnewhiphop import HotNewHipHopIE
 from .howcast import HowcastIE
+from .huffpost import HuffPostIE
 from .hypem import HypemIE
 from .ign import IGNIE, OneUPIE
 from .imdb import (
@@ -106,6 +109,7 @@ from .keezmovies import KeezMoviesIE
 from .khanacademy import KhanAcademyIE
 from .kickstarter import KickStarterIE
 from .keek import KeekIE
+from .la7 import LA7IE
 from .liveleak import LiveLeakIE
 from .livestream import LivestreamIE, LivestreamOriginalIE
 from .lynda import (
@@ -113,6 +117,7 @@ from .lynda import (
     LyndaCourseIE
 )
 from .macgamestore import MacGameStoreIE
+from .malemotion import MalemotionIE
 from .mdr import MDRIE
 from .metacafe import MetacafeIE
 from .metacritic import MetacriticIE
@@ -156,7 +161,12 @@ from .ro220 import Ro220IE
 from .rottentomatoes import RottenTomatoesIE
 from .roxwel import RoxwelIE
 from .rtlnow import RTLnowIE
-from .rutube import RutubeIE
+from .rutube import (
+    RutubeIE,
+    RutubeChannelIE,
+    RutubeMovieIE,
+    RutubePersonIE,
+)
 from .servingsys import ServingSysIE
 from .sina import SinaIE
 from .slashdot import SlashdotIE
@@ -219,7 +229,6 @@ from .vine import VineIE
 from .viki import VikiIE
 from .vk import VKIE
 from .wat import WatIE
-from .websurg import WeBSurgIE
 from .weibo import WeiboIE
 from .wimp import WimpIE
 from .wistia import WistiaIE

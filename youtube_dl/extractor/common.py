@@ -71,7 +71,7 @@ class InfoExtractor(object):
                     * player_url SWF Player URL (used for rtmpdump).
                     * protocol   The protocol that will be used for the actual
                                  download, lower-case.
-                                 "http", "https", "rtsp", "rtmp" or so.
+                                 "http", "https", "rtsp", "rtmp", "m3u8" or so.
                     * preference Order number of this format. If this field is
                                  present and not None, the formats get sorted
                                  by this field.
@@ -465,7 +465,14 @@ class InfoExtractor(object):
         }
         return RATING_TABLE.get(rating.lower(), None)
 
+    def _twitter_search_player(self, html):
+        return self._html_search_meta('twitter:player', html,
+            'twitter card player')
+
     def _sort_formats(self, formats):
+        if not formats:
+            raise ExtractorError(u'No video formats found')
+
         def _formats_key(f):
             # TODO remove the following workaround
             from ..utils import determine_ext
