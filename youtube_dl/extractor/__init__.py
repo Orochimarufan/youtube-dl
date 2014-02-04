@@ -96,6 +96,7 @@ from .ina import InaIE
 from .infoq import InfoQIE
 from .instagram import InstagramIE
 from .internetvideoarchive import InternetVideoArchiveIE
+from .iprima import IPrimaIE
 from .ivi import (
     IviIE,
     IviCompilationIE
@@ -110,6 +111,7 @@ from .khanacademy import KhanAcademyIE
 from .kickstarter import KickStarterIE
 from .keek import KeekIE
 from .la7 import LA7IE
+from .lifenews import LifeNewsIE
 from .liveleak import LiveLeakIE
 from .livestream import LivestreamIE, LivestreamOriginalIE
 from .lynda import (
@@ -125,6 +127,7 @@ from .mit import TechTVMITIE, MITIE
 from .mixcloud import MixcloudIE
 from .mpora import MporaIE
 from .mofosex import MofosexIE
+from .mooshare import MooshareIE
 from .mtv import (
     MTVIE,
     MTVIggyIE,
@@ -141,6 +144,7 @@ from .newgrounds import NewgroundsIE
 from .nhl import NHLIE, NHLVideocenterIE
 from .niconico import NiconicoIE
 from .ninegag import NineGagIE
+from .normalboots import NormalbootsIE
 from .novamov import NovamovIE
 from .nowness import NownessIE
 from .nowvideo import NowVideoIE
@@ -198,6 +202,7 @@ from .ted import TEDIE
 from .tf1 import TF1IE
 from .theplatform import ThePlatformIE
 from .thisav import ThisAVIE
+from .tinypic import TinyPicIE
 from .toutv import TouTvIE
 from .traileraddict import TrailerAddictIE
 from .trilulilu import TriluliluIE
@@ -228,6 +233,7 @@ from .vimeo import (
 from .vine import VineIE
 from .viki import VikiIE
 from .vk import VKIE
+from .vube import VubeIE
 from .wat import WatIE
 from .weibo import WeiboIE
 from .wimp import WimpIE

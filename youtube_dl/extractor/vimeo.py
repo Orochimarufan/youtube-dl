@@ -6,10 +6,10 @@ import re
 import itertools
 
 from .common import InfoExtractor
+from .subtitles import SubtitlesInfoExtractor
 from ..utils import (
     compat_urllib_parse,
     compat_urllib_request,
-
     clean_html,
     get_element_by_attribute,
     ExtractorError,
@@ -19,7 +19,7 @@ from ..utils import (
 )
 
 
-class VimeoIE(InfoExtractor):
+class VimeoIE(SubtitlesInfoExtractor):
     """Information extractor for vimeo.com."""
 
     # _VALID_URL matches Vimeo URLs
@@ -83,6 +83,20 @@ class VimeoIE(InfoExtractor):
             'params': {
                 'videopassword': 'youtube-dl',
             },
+        },
+        {
+            'url': 'http://vimeo.com/76979871',
+            'md5': '3363dd6ffebe3784d56f4132317fd446',
+            'note': 'Video with subtitles',
+            'info_dict': {
+                'id': '76979871',
+                'ext': 'mp4',
+                'title': 'The New Vimeo Player (You Know, For Videos)',
+                'description': 'md5:2ec900bf97c3f389378a96aee11260ea',
+                'upload_date': '20131015',
+                'uploader_id': 'staff',
+                'uploader': 'Vimeo Staff',
+            }
         },
     ]
 
@@ -273,19 +287,31 @@ class VimeoIE(InfoExtractor):
         if len(formats) == 0:
             raise ExtractorError('No known codec found')
 
+        subtitles = {}
+        text_tracks = config['request'].get('text_tracks')
+        if text_tracks:
+            for tt in text_tracks:
+                subtitles[tt['lang']] = 'http://vimeo.com' + tt['url']
+
+        video_subtitles = self.extract_subtitles(video_id, subtitles)
+        if self._downloader.params.get('listsubtitles', False):
+            self._list_available_subtitles(video_id, subtitles)
+            return
+
         return {
-            'id':       video_id,
+            'id': video_id,
             'uploader': video_uploader,
             'uploader_id': video_uploader_id,
-            'upload_date':  video_upload_date,
-            'title':    video_title,
-            'thumbnail':    video_thumbnail,
-            'description':  video_description,
+            'upload_date': video_upload_date,
+            'title': video_title,
+            'thumbnail': video_thumbnail,
+            'description': video_description,
             'formats': formats,
             'webpage_url': url,
             'view_count': view_count,
             'like_count': like_count,
             'comment_count': comment_count,
+            'subtitles': video_subtitles,
         }
 
 

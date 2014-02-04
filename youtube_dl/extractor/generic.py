@@ -38,18 +38,6 @@ class GenericIE(InfoExtractor):
                 'title': 'R\u00e9gis plante sa Jeep',
             }
         },
-        # embedded vimeo video
-        {
-            'add_ie': ['Vimeo'],
-            'url': 'http://skillsmatter.com/podcast/home/move-semanticsperfect-forwarding-and-rvalue-references',
-            'file': '22444065.mp4',
-            'md5': '2903896e23df39722c33f015af0666e2',
-            'info_dict': {
-                'title': 'ACCU 2011: Move Semantics,Perfect Forwarding, and Rvalue references- Scott Meyers- 13/04/2011',
-                'uploader_id': 'skillsmatter',
-                'uploader': 'Skills Matter',
-            }
-        },
         # bandcamp page with custom domain
         {
             'add_ie': ['Bandcamp'],
@@ -246,15 +234,25 @@ class GenericIE(InfoExtractor):
             r'^(?:https?://)?([^/]*)/.*', url, 'video uploader')
 
         # Look for BrightCove:
-        bc_url = BrightcoveIE._extract_brightcove_url(webpage)
-        if bc_url is not None:
+        bc_urls = BrightcoveIE._extract_brightcove_urls(webpage)
+        if bc_urls:
             self.to_screen('Brightcove video detected.')
-            surl = smuggle_url(bc_url, {'Referer': url})
-            return self.url_result(surl, 'Brightcove')
+            entries = [{
+                '_type': 'url',
+                'url': smuggle_url(bc_url, {'Referer': url}),
+                'ie_key': 'Brightcove'
+            } for bc_url in bc_urls]
+
+            return {
+                '_type': 'playlist',
+                'title': video_title,
+                'id': video_id,
+                'entries': entries,
+            }
 
         # Look for embedded (iframe) Vimeo player
         mobj = re.search(
-            r'<iframe[^>]+?src="((?:https?:)?//player.vimeo.com/video/.+?)"', webpage)
+            r'<iframe[^>]+?src="((?:https?:)?//player\.vimeo\.com/video/.+?)"', webpage)
         if mobj:
             player_url = unescapeHTML(mobj.group(1))
             surl = smuggle_url(player_url, {'Referer': url})
@@ -262,7 +260,7 @@ class GenericIE(InfoExtractor):
 
         # Look for embedded (swf embed) Vimeo player
         mobj = re.search(
-            r'<embed[^>]+?src="(https?://(?:www\.)?vimeo.com/moogaloop.swf.+?)"', webpage)
+            r'<embed[^>]+?src="(https?://(?:www\.)?vimeo\.com/moogaloop\.swf.+?)"', webpage)
         if mobj:
             return self.url_result(mobj.group(1), 'Vimeo')
 
@@ -332,7 +330,7 @@ class GenericIE(InfoExtractor):
             return self.url_result(mobj.group(1), 'Aparat')
 
         # Look for MPORA videos
-        mobj = re.search(r'<iframe .*?src="(http://mpora\.com/videos/[^"]+)"', webpage)
+        mobj = re.search(r'<iframe .*?src="(http://mpora\.(?:com|de)/videos/[^"]+)"', webpage)
         if mobj is not None:
             return self.url_result(mobj.group(1), 'Mpora')
 
@@ -350,7 +348,7 @@ class GenericIE(InfoExtractor):
 
         # Look for embedded Huffington Post player
         mobj = re.search(
-            r'<iframe[^>]+?src=(["\'])(?P<url>https?://embed\.live.huffingtonpost\.com/.+?)\1', webpage)
+            r'<iframe[^>]+?src=(["\'])(?P<url>https?://embed\.live\.huffingtonpost\.com/.+?)\1', webpage)
         if mobj is not None:
             return self.url_result(mobj.group('url'), 'HuffPost')
 
@@ -358,7 +356,7 @@ class GenericIE(InfoExtractor):
         mobj = re.search(r'flashvars: [\'"](?:.*&)?file=(http[^\'"&]*)', webpage)
         if mobj is None:
             # Look for gorilla-vid style embedding
-            mobj = re.search(r'(?s)jw_plugins.*?file:\s*["\'](.*?)["\']', webpage)
+            mobj = re.search(r'(?s)(?:jw_plugins|JWPlayerOptions).*?file\s*:\s*["\'](.*?)["\']', webpage)
         if mobj is None:
             # Broaden the search a little bit
             mobj = re.search(r'[^A-Za-z0-9]?(?:file|source)=(http[^\'"&]*)', webpage)
