@@ -15,6 +15,7 @@ from .arte import (
 from .auengine import AUEngineIE
 from .bambuser import BambuserIE, BambuserChannelIE
 from .bandcamp import BandcampIE, BandcampAlbumIE
+from .bbccouk import BBCCoUkIE
 from .blinkx import BlinkxIE
 from .bliptv import BlipTVIE, BlipTVUserIE
 from .bloomberg import BloombergIE
@@ -25,6 +26,7 @@ from .canalplus import CanalplusIE
 from .canalc2 import Canalc2IE
 from .cbs import CBSIE
 from .channel9 import Channel9IE
+from .chilloutzone import ChilloutzoneIE
 from .cinemassacre import CinemassacreIE
 from .clipfish import ClipfishIE
 from .cliphunter import CliphunterIE
@@ -54,12 +56,14 @@ from .ebaumsworld import EbaumsWorldIE
 from .ehow import EHowIE
 from .eighttracks import EightTracksIE
 from .eitb import EitbIE
+from .elpais import ElPaisIE
 from .escapist import EscapistIE
 from .everyonesmixtape import EveryonesMixtapeIE
 from .exfm import ExfmIE
 from .extremetube import ExtremeTubeIE
 from .facebook import FacebookIE
 from .faz import FazIE
+from .firstpost import FirstpostIE
 from .fktv import (
     FKTVIE,
     FKTVPosteckeIE,
@@ -101,6 +105,7 @@ from .ivi import (
     IviIE,
     IviCompilationIE
 )
+from .jadorecettepub import JadoreCettePubIE
 from .jeuxvideo import JeuxVideoIE
 from .jukebox import JukeboxIE
 from .justintv import JustinTVIE
@@ -110,6 +115,7 @@ from .keezmovies import KeezMoviesIE
 from .khanacademy import KhanAcademyIE
 from .kickstarter import KickStarterIE
 from .keek import KeekIE
+from .kontrtube import KontrTubeIE
 from .la7 import LA7IE
 from .lifenews import LifeNewsIE
 from .liveleak import LiveLeakIE
@@ -118,6 +124,7 @@ from .lynda import (
     LyndaIE,
     LyndaCourseIE
 )
+from .m6 import M6IE
 from .macgamestore import MacGameStoreIE
 from .malemotion import MalemotionIE
 from .mdr import MDRIE
@@ -139,8 +146,10 @@ from .myvideo import MyVideoIE
 from .naver import NaverIE
 from .nba import NBAIE
 from .nbc import NBCNewsIE
+from .ndr import NDRIE
 from .ndtv import NDTVIE
 from .newgrounds import NewgroundsIE
+from .nfb import NFBIE
 from .nhl import NHLIE, NHLVideocenterIE
 from .niconico import NiconicoIE
 from .ninegag import NineGagIE

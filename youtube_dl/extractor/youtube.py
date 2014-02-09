@@ -502,7 +502,7 @@ class YoutubeIE(YoutubeBaseInfoExtractor, SubtitlesInfoExtractor):
                 return a % b
 
             m = re.match(
-                r'^(?P<func>[a-zA-Z]+)\((?P<args>[a-z0-9,]+)\)$', expr)
+                r'^(?P<func>[a-zA-Z$]+)\((?P<args>[a-z0-9,]+)\)$', expr)
             if m:
                 fname = m.group('func')
                 if fname not in functions:
@@ -1085,8 +1085,9 @@ class YoutubeIE(YoutubeBaseInfoExtractor, SubtitlesInfoExtractor):
             self._downloader.report_warning(err_msg)
             return {}
 
-    def _extract_id(self, url):
-        mobj = re.match(self._VALID_URL, url, re.VERBOSE)
+    @classmethod
+    def extract_id(cls, url):
+        mobj = re.match(cls._VALID_URL, url, re.VERBOSE)
         if mobj is None:
             raise ExtractorError(u'Invalid URL: %s' % url)
         video_id = mobj.group(2)
@@ -1115,7 +1116,7 @@ class YoutubeIE(YoutubeBaseInfoExtractor, SubtitlesInfoExtractor):
         mobj = re.search(self._NEXT_URL_RE, url)
         if mobj:
             url = 'https://www.youtube.com/' + compat_urllib_parse.unquote(mobj.group(1)).lstrip('/')
-        video_id = self._extract_id(url)
+        video_id = self.extract_id(url)
 
         # Get video webpage
         url = 'https://www.youtube.com/watch?v=%s&gl=US&hl=en&has_verified=1' % video_id
@@ -1422,7 +1423,7 @@ class YoutubeIE(YoutubeBaseInfoExtractor, SubtitlesInfoExtractor):
 
 class YoutubePlaylistIE(YoutubeBaseInfoExtractor):
     IE_DESC = u'YouTube.com playlists'
-    _VALID_URL = r"""(?:
+    _VALID_URL = r"""(?x)(?:
                         (?:https?://)?
                         (?:\w+\.)?
                         youtube\.com/
@@ -1431,7 +1432,11 @@ class YoutubePlaylistIE(YoutubeBaseInfoExtractor):
                            \? (?:.*?&)*? (?:p|a|list)=
                         |  p/
                         )
-                        ((?:PL|EC|UU|FL|RD)?[0-9A-Za-z-_]{10,})
+                        (
+                            (?:PL|EC|UU|FL|RD)?[0-9A-Za-z-_]{10,}
+                            # Top tracks, they can also include dots 
+                            |(?:MC)[\w\.]*
+                        )
                         .*
                      |
                         ((?:PL|EC|UU|FL|RD)[0-9A-Za-z-_]{10,})
@@ -1440,11 +1445,6 @@ class YoutubePlaylistIE(YoutubeBaseInfoExtractor):
     _MORE_PAGES_INDICATOR = r'data-link-type="next"'
     _VIDEO_RE = r'href="/watch\?v=(?P<id>[0-9A-Za-z_-]{11})&amp;[^"]*?index=(?P<index>\d+)'
     IE_NAME = u'youtube:playlist'
-
-    @classmethod
-    def suitable(cls, url):
-        """Receives a URL and returns True if suitable for this IE."""
-        return re.match(cls._VALID_URL, url, re.VERBOSE) is not None
 
     def _real_initialize(self):
         self._login()
@@ -1469,7 +1469,7 @@ class YoutubePlaylistIE(YoutubeBaseInfoExtractor):
 
     def _real_extract(self, url):
         # Extract playlist id
-        mobj = re.match(self._VALID_URL, url, re.VERBOSE)
+        mobj = re.match(self._VALID_URL, url)
         if mobj is None:
             raise ExtractorError(u'Invalid URL: %s' % url)
         playlist_id = mobj.group(1) or mobj.group(2)

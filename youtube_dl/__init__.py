@@ -40,8 +40,9 @@ __authors__  = (
     'Michael Orlitzky',
     'Chris Gahan',
     'Saimadhav Heblikar',
-	'Mike Col',
+    'Mike Col',
     'Taeyeon Mori',
+    'Andreas Schmitz',
 )
 
 __license__ = 'Public Domain'
