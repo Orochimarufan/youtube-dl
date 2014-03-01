@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 
 import os
 import re
+import xml.etree.ElementTree
 
 from .common import InfoExtractor
 from .youtube import YoutubeIE
@@ -12,6 +13,7 @@ from ..utils import (
     compat_urllib_parse,
     compat_urllib_request,
     compat_urlparse,
+    compat_xml_parse_error,
 
     ExtractorError,
     HEADRequest,
@@ -81,10 +83,10 @@ class GenericIE(InfoExtractor):
         # Direct link to a video
         {
             'url': 'http://media.w3.org/2010/05/sintel/trailer.mp4',
-            'file': 'trailer.mp4',
             'md5': '67d406c2bcb6af27fa886f31aa934bbe',
             'info_dict': {
                 'id': 'trailer',
+                'ext': 'mp4',
                 'title': 'trailer',
                 'upload_date': '20100513',
             }
@@ -92,7 +94,6 @@ class GenericIE(InfoExtractor):
         # ooyala video
         {
             'url': 'http://www.rollingstone.com/music/videos/norwegian-dj-cashmere-cat-goes-spartan-on-with-me-premiere-20131219',
-            'file': 'BwY2RxaTrTkslxOfcan0UCf0YqyvWysJ.mp4',
             'md5': '5644c6ca5d5782c1d0d350dad9bd840c',
             'info_dict': {
                 'id': 'BwY2RxaTrTkslxOfcan0UCf0YqyvWysJ',
@@ -100,6 +101,22 @@ class GenericIE(InfoExtractor):
                 'title': '2cc213299525360.mov',  # that's what we get
             },
         },
+        # google redirect
+        {
+            'url': 'http://www.google.com/url?sa=t&rct=j&q=&esrc=s&source=web&cd=1&cad=rja&ved=0CCUQtwIwAA&url=http%3A%2F%2Fwww.youtube.com%2Fwatch%3Fv%3DcmQHVoWB5FY&ei=F-sNU-LLCaXk4QT52ICQBQ&usg=AFQjCNEw4hL29zgOohLXvpJ-Bdh2bils1Q&bvm=bv.61965928,d.bGE',
+            'info_dict': {
+                'id': 'cmQHVoWB5FY',
+                'ext': 'mp4',
+                'upload_date': '20130224',
+                'uploader_id': 'TheVerge',
+                'description': 'Chris Ziegler takes a look at the Alcatel OneTouch Fire and the ZTE Open; two of the first Firefox OS handsets to be officially announced.',
+                'uploader': 'The Verge',
+                'title': 'First Firefox OS phones side-by-side',
+            },
+            'params': {
+                'skip_download': False,
+            }
+        }
     ]
 
     def report_download_webpage(self, video_id):
@@ -158,6 +175,25 @@ class GenericIE(InfoExtractor):
         if response is None:
             raise ExtractorError('Invalid URL protocol')
         return response
+
+    def _extract_rss(self, url, video_id, doc):
+        playlist_title = doc.find('./channel/title').text
+        playlist_desc_el = doc.find('./channel/description')
+        playlist_desc = None if playlist_desc_el is None else playlist_desc_el.text
+
+        entries = [{
+            '_type': 'url',
+            'url': e.find('link').text,
+            'title': e.find('title').text,
+        } for e in doc.findall('./channel/item')]
+
+        return {
+            '_type': 'playlist',
+            'id': url,
+            'title': playlist_title,
+            'description': playlist_desc,
+            'entries': entries,
+        }
 
     def _real_extract(self, url):
         parsed_url = compat_urlparse.urlparse(url)
@@ -218,6 +254,14 @@ class GenericIE(InfoExtractor):
             raise ExtractorError('Failed to download URL: %s' % url)
 
         self.report_extraction(video_id)
+
+        # Is it an RSS feed?
+        try:
+            doc = xml.etree.ElementTree.fromstring(webpage.encode('utf-8'))
+            if doc.tag == 'rss':
+                return self._extract_rss(url, video_id, doc)
+        except compat_xml_parse_error:
+            pass
 
         # it's tempting to parse this further, but you would
         # have to take into account all the variations like
@@ -334,17 +378,28 @@ class GenericIE(InfoExtractor):
         if mobj is not None:
             return self.url_result(mobj.group(1), 'Mpora')
 
-        # Look for embedded Novamov player
+        # Look for embedded NovaMov player
         mobj = re.search(
             r'<iframe[^>]+?src=(["\'])(?P<url>http://(?:(?:embed|www)\.)?novamov\.com/embed\.php.+?)\1', webpage)
         if mobj is not None:
-            return self.url_result(mobj.group('url'), 'Novamov')
+            return self.url_result(mobj.group('url'), 'NovaMov')
+
+        # Look for embedded NowVideo player
+        mobj = re.search(
+            r'<iframe[^>]+?src=(["\'])(?P<url>http://(?:(?:embed|www)\.)?nowvideo\.(?:ch|sx|eu)/embed\.php.+?)\1', webpage)
+        if mobj is not None:
+            return self.url_result(mobj.group('url'), 'NowVideo')
 
         # Look for embedded Facebook player
         mobj = re.search(
             r'<iframe[^>]+?src=(["\'])(?P<url>https://www\.facebook\.com/video/embed.+?)\1', webpage)
         if mobj is not None:
             return self.url_result(mobj.group('url'), 'Facebook')
+
+        # Look for embedded VK player
+        mobj = re.search(r'<iframe[^>]+?src=(["\'])(?P<url>https?://vk\.com/video_ext\.php.+?)\1', webpage)
+        if mobj is not None:
+            return self.url_result(mobj.group('url'), 'VK')
 
         # Look for embedded Huffington Post player
         mobj = re.search(
@@ -376,6 +431,18 @@ class GenericIE(InfoExtractor):
         if mobj is None:
             # HTML5 video
             mobj = re.search(r'<video[^<]*(?:>.*?<source.*?)? src="([^"]+)"', webpage, flags=re.DOTALL)
+        if mobj is None:
+            mobj = re.search(
+                r'(?i)<meta\s+(?=(?:[a-z-]+="[^"]+"\s+)*http-equiv="refresh")'
+                r'(?:[a-z-]+="[^"]+"\s+)*?content="[0-9]{,2};url=\'([^\']+)\'"',
+                webpage)
+            if mobj:
+                new_url = mobj.group(1)
+                self.report_following_redirect(new_url)
+                return {
+                    '_type': 'url',
+                    'url': new_url,
+                }
         if mobj is None:
             raise ExtractorError('Unsupported URL: %s' % url)
 

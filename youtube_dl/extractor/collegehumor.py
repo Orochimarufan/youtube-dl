@@ -40,9 +40,9 @@ class CollegeHumorIE(InfoExtractor):
             'id': 'W5gMp3ZjYg4',
             'ext': 'mp4',
             'title': 'Funny Dogs Protecting Babies Compilation 2014 [NEW HD]',
-            'uploader': 'Funnyplox TV',
+            'uploader': 'FunnyPlox TV',
             'uploader_id': 'funnyploxtv',
-            'description': 'md5:11812366244110c3523968aa74f02521',
+            'description': 'md5:7ded37421526d54afdf005e25bc2b7a3',
             'upload_date': '20140128',
         },
         'params': {

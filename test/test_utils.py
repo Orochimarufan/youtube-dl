@@ -9,6 +9,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
 # Various small unit tests
+import io
 import xml.etree.ElementTree
 
 #from youtube_dl.utils import htmlentity_transform
@@ -21,10 +22,12 @@ from youtube_dl.utils import (
     orderedSet,
     PagedList,
     parse_duration,
+    read_batch_urls,
     sanitize_filename,
     shell_quote,
     smuggle_url,
     str_to_int,
+    struct_unpack,
     timeconvert,
     unescapeHTML,
     unified_strdate,
@@ -127,6 +130,7 @@ class TestUtil(unittest.TestCase):
         self.assertEqual(unified_strdate('8/7/2009'), '20090708')
         self.assertEqual(unified_strdate('Dec 14, 2012'), '20121214')
         self.assertEqual(unified_strdate('2012/10/11 01:56:38 +0000'), '20121011')
+        self.assertEqual(unified_strdate('1968-12-10'), '19681210')
 
     def test_find_xpath_attr(self):
         testxml = u'''<root>
@@ -200,7 +204,16 @@ class TestUtil(unittest.TestCase):
         self.assertEqual(parse_duration('1'), 1)
         self.assertEqual(parse_duration('1337:12'), 80232)
         self.assertEqual(parse_duration('9:12:43'), 33163)
+        self.assertEqual(parse_duration('12:00'), 720)
+        self.assertEqual(parse_duration('00:01:01'), 61)
         self.assertEqual(parse_duration('x:y'), None)
+        self.assertEqual(parse_duration('3h11m53s'), 11513)
+        self.assertEqual(parse_duration('62m45s'), 3765)
+        self.assertEqual(parse_duration('6m59s'), 419)
+        self.assertEqual(parse_duration('49s'), 49)
+        self.assertEqual(parse_duration('0h0m0s'), 0)
+        self.assertEqual(parse_duration('0m0s'), 0)
+        self.assertEqual(parse_duration('0s'), 0)
 
     def test_fix_xml_ampersands(self):
         self.assertEqual(
@@ -235,6 +248,18 @@ class TestUtil(unittest.TestCase):
         testPL(5, 2, (1, 4), [1, 2, 3])
         testPL(5, 2, (2, 99), [2, 3, 4])
         testPL(5, 2, (20, 99), [])
+
+    def test_struct_unpack(self):
+        self.assertEqual(struct_unpack(u'!B', b'\x00'), (0,))
+
+    def test_read_batch_urls(self):
+        f = io.StringIO(u'''\xef\xbb\xbf foo
+            bar\r
+            baz
+            # More after this line\r
+            ; or after this
+            bam''')
+        self.assertEqual(read_batch_urls(f), [u'foo', u'bar', u'baz', u'bam'])
 
 if __name__ == '__main__':
     unittest.main()
