@@ -8,6 +8,7 @@ import itertools
 from .common import InfoExtractor
 from .subtitles import SubtitlesInfoExtractor
 from ..utils import (
+    compat_HTTPError,
     compat_urllib_parse,
     compat_urllib_request,
     clean_html,
@@ -101,6 +102,15 @@ class VimeoIE(SubtitlesInfoExtractor):
         },
     ]
 
+    @classmethod
+    def suitable(cls, url):
+        if VimeoChannelIE.suitable(url):
+            # Otherwise channel urls like http://vimeo.com/channels/31259 would
+            # match
+            return False
+        else:
+            return super(VimeoIE, cls).suitable(url)
+
     def _login(self):
         (username, password) = self._get_login_info()
         if username is None:
@@ -172,7 +182,18 @@ class VimeoIE(SubtitlesInfoExtractor):
 
         # Retrieve video webpage to extract further information
         request = compat_urllib_request.Request(url, None, headers)
-        webpage = self._download_webpage(request, video_id)
+        try:
+            webpage = self._download_webpage(request, video_id)
+        except ExtractorError as ee:
+            if isinstance(ee.cause, compat_HTTPError) and ee.cause.code == 403:
+                errmsg = ee.cause.read()
+                if b'Because of its privacy settings, this video cannot be played here' in errmsg:
+                    raise ExtractorError(
+                        'Cannot download embed-only video without embedding '
+                        'URL. Please call youtube-dl with the URL of the page '
+                        'that embeds this video.',
+                        expected=True)
+            raise
 
         # Now we begin extracting as much information as we can from what we
         # retrieved. First we extract the information common to all extractors,
@@ -320,7 +341,7 @@ class VimeoIE(SubtitlesInfoExtractor):
 
 class VimeoChannelIE(InfoExtractor):
     IE_NAME = 'vimeo:channel'
-    _VALID_URL = r'(?:https?://)?vimeo\.com/channels/(?P<id>[^/]+)'
+    _VALID_URL = r'(?:https?://)?vimeo\.com/channels/(?P<id>[^/]+)/?(\?.*)?$'
     _MORE_PAGES_INDICATOR = r'<a.+?rel="next"'
     _TITLE_RE = r'<link rel="alternate"[^>]+?title="(.*?)"'
 

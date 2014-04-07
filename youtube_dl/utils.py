@@ -1,11 +1,14 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import calendar
+import codecs
 import contextlib
 import ctypes
 import datetime
 import email.utils
 import errno
+import getpass
 import gzip
 import itertools
 import io
@@ -22,6 +25,7 @@ import struct
 import subprocess
 import sys
 import traceback
+import xml.etree.ElementTree
 import zlib
 
 try:
@@ -499,13 +503,13 @@ def orderedSet(iterable):
             res.append(el)
     return res
 
-def unescapeHTML(s):
-    """
-    @param s a string
-    """
-    assert type(s) == type(u'')
 
-    result = re.sub(u'(?u)&(.+?);', htmlentity_transform, s)
+def unescapeHTML(s):
+    if s is None:
+        return None
+    assert type(s) == compat_str
+
+    result = re.sub(r'(?u)&(.+?);', htmlentity_transform, s)
     return result
 
 
@@ -535,7 +539,6 @@ def encodeFilename(s, for_subprocess=False):
     if encoding is None:
         encoding = 'utf-8'
     return s.encode(encoding, 'ignore')
-
 
 def decodeOption(optval):
     if optval is None:
@@ -759,8 +762,37 @@ class YoutubeDLHandler(compat_urllib_request.HTTPHandler):
     https_response = http_response
 
 
+def parse_iso8601(date_str):
+    """ Return a UNIX timestamp from the given date """
+
+    if date_str is None:
+        return None
+
+    m = re.search(
+        r'Z$| ?(?P<sign>\+|-)(?P<hours>[0-9]{2}):?(?P<minutes>[0-9]{2})$',
+        date_str)
+    if not m:
+        timezone = datetime.timedelta()
+    else:
+        date_str = date_str[:-len(m.group(0))]
+        if not m.group('sign'):
+            timezone = datetime.timedelta()
+        else:
+            sign = 1 if m.group('sign') == '+' else -1
+            timezone = datetime.timedelta(
+                hours=sign * int(m.group('hours')),
+                minutes=sign * int(m.group('minutes')))
+
+    dt = datetime.datetime.strptime(date_str, '%Y-%m-%dT%H:%M:%S') - timezone
+    return calendar.timegm(dt.timetuple())
+
+
 def unified_strdate(date_str):
     """Return a string with the date in the format YYYYMMDD"""
+
+    if date_str is None:
+        return None
+
     upload_date = None
     #Replace commas
     date_str = date_str.replace(',', ' ')
@@ -777,6 +809,7 @@ def unified_strdate(date_str):
         '%Y/%m/%d %H:%M:%S',
         '%Y-%m-%d %H:%M:%S',
         '%d.%m.%Y %H:%M',
+        '%d.%m.%Y %H.%M',
         '%Y-%m-%dT%H:%M:%SZ',
         '%Y-%m-%dT%H:%M:%S.%fZ',
         '%Y-%m-%dT%H:%M:%S.%f0Z',
@@ -1119,11 +1152,11 @@ def setproctitle(title):
         libc = ctypes.cdll.LoadLibrary("libc.so.6")
     except OSError:
         return
-    title = title
-    buf = ctypes.create_string_buffer(len(title) + 1)
-    buf.value = title.encode('utf-8')
+    title_bytes = title.encode('utf-8')
+    buf = ctypes.create_string_buffer(len(title_bytes))
+    buf.value = title_bytes
     try:
-        libc.prctl(15, ctypes.byref(buf), 0, 0, 0)
+        libc.prctl(15, buf, 0, 0, 0)
     except AttributeError:
         return  # Strange libc, just skip this
 
@@ -1144,8 +1177,12 @@ class HEADRequest(compat_urllib_request.Request):
         return "HEAD"
 
 
-def int_or_none(v, scale=1):
-    return v if v is None else (int(v) // scale)
+def int_or_none(v, scale=1, default=None):
+    return default if v is None else (int(v) // scale)
+
+
+def float_or_none(v, scale=1, default=None):
+    return default if v is None else (float(v) / scale)
 
 
 def parse_duration(s):
@@ -1153,7 +1190,7 @@ def parse_duration(s):
         return None
 
     m = re.match(
-        r'(?:(?:(?P<hours>[0-9]+)[:h])?(?P<mins>[0-9]+)[:m])?(?P<secs>[0-9]+)s?$', s)
+        r'(?:(?:(?P<hours>[0-9]+)[:h])?(?P<mins>[0-9]+)[:m])?(?P<secs>[0-9]+)s?(?::[0-9]+)?$', s)
     if not m:
         return None
     res = int(m.group('secs'))
@@ -1227,9 +1264,11 @@ class PagedList(object):
 
 
 def uppercase_escape(s):
+    unicode_escape = codecs.getdecoder('unicode_escape')
     return re.sub(
-        r'\\U([0-9a-fA-F]{8})',
-        lambda m: compat_chr(int(m.group(1), base=16)), s)
+        r'\\U[0-9a-fA-F]{8}',
+        lambda m: unicode_escape(m.group(0))[0],
+        s)
 
 try:
     struct.pack(u'!I', 0)
@@ -1263,3 +1302,39 @@ def read_batch_urls(batch_fd):
 
     with contextlib.closing(batch_fd) as fd:
         return [url for url in map(fixup, fd) if url]
+
+
+def urlencode_postdata(*args, **kargs):
+    return compat_urllib_parse.urlencode(*args, **kargs).encode('ascii')
+
+
+def parse_xml(s):
+    class TreeBuilder(xml.etree.ElementTree.TreeBuilder):
+        def doctype(self, name, pubid, system):
+            pass  # Ignore doctypes
+
+    parser = xml.etree.ElementTree.XMLParser(target=TreeBuilder())
+    kwargs = {'parser': parser} if sys.version_info >= (2, 7) else {}
+    return xml.etree.ElementTree.XML(s.encode('utf-8'), **kwargs)
+
+
+if sys.version_info < (3, 0) and sys.platform == 'win32':
+    def compat_getpass(prompt, *args, **kwargs):
+        if isinstance(prompt, compat_str):
+            prompt = prompt.encode(preferredencoding())
+        return getpass.getpass(prompt, *args, **kwargs)
+else:
+    compat_getpass = getpass.getpass
+
+
+US_RATINGS = {
+    'G': 0,
+    'PG': 10,
+    'PG-13': 13,
+    'R': 16,
+    'NC': 18,
+}
+
+
+def strip_jsonp(code):
+    return re.sub(r'(?s)^[a-zA-Z_]+\s*\(\s*(.*)\);\s*?\s*$', r'\1', code)

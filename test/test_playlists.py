@@ -9,8 +9,10 @@ import sys
 import unittest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from test.helper import FakeYDL
-
+from test.helper import (
+    expect_info_dict,
+    FakeYDL,
+)
 
 from youtube_dl.extractor import (
     AcademicEarthCourseIE,
@@ -36,6 +38,11 @@ from youtube_dl.extractor import (
     RutubeChannelIE,
     GoogleSearchIE,
     GenericIE,
+    TEDIE,
+    ToypicsUserIE,
+    XTubeUserIE,
+    InstagramUserIE,
+    CSpanIE,
 )
 
 
@@ -98,7 +105,7 @@ class TestPlaylists(unittest.TestCase):
         result = ie.extract('http://www.ustream.tv/channel/young-americans-for-liberty')
         self.assertIsPlaylist(result)
         self.assertEqual(result['id'], '5124905')
-        self.assertTrue(len(result['entries']) >= 11)
+        self.assertTrue(len(result['entries']) >= 6)
 
     def test_soundcloud_set(self):
         dl = FakeYDL()
@@ -248,16 +255,78 @@ class TestPlaylists(unittest.TestCase):
         self.assertIsPlaylist(result)
         self.assertEqual(result['id'], 'python language')
         self.assertEqual(result['title'], 'python language')
-        self.assertTrue(len(result['entries']) == 15)
+        self.assertEqual(len(result['entries']), 15)
 
     def test_generic_rss_feed(self):
         dl = FakeYDL()
         ie = GenericIE(dl)
-        result = ie.extract('http://www.escapistmagazine.com/rss/videos/list/1.xml')
+        result = ie.extract('http://phihag.de/2014/youtube-dl/rss.xml')
         self.assertIsPlaylist(result)
-        self.assertEqual(result['id'], 'http://www.escapistmagazine.com/rss/videos/list/1.xml')
+        self.assertEqual(result['id'], 'http://phihag.de/2014/youtube-dl/rss.xml')
         self.assertEqual(result['title'], 'Zero Punctuation')
         self.assertTrue(len(result['entries']) > 10)
+
+    def test_ted_playlist(self):
+        dl = FakeYDL()
+        ie = TEDIE(dl)
+        result = ie.extract('http://www.ted.com/playlists/who_are_the_hackers')
+        self.assertIsPlaylist(result)
+        self.assertEqual(result['id'], '10')
+        self.assertEqual(result['title'], 'Who are the hackers?')
+        self.assertTrue(len(result['entries']) >= 6)
+
+    def test_toypics_user(self):
+        dl = FakeYDL()
+        ie = ToypicsUserIE(dl)
+        result = ie.extract('http://videos.toypics.net/Mikey')
+        self.assertIsPlaylist(result)
+        self.assertEqual(result['id'], 'Mikey')
+        self.assertTrue(len(result['entries']) >= 17)
+
+    def test_xtube_user(self):
+        dl = FakeYDL()
+        ie = XTubeUserIE(dl)
+        result = ie.extract('http://www.xtube.com/community/profile.php?user=greenshowers')
+        self.assertIsPlaylist(result)
+        self.assertEqual(result['id'], 'greenshowers')
+        self.assertTrue(len(result['entries']) >= 155)
+
+    def test_InstagramUser(self):
+        dl = FakeYDL()
+        ie = InstagramUserIE(dl)
+        result = ie.extract('http://instagram.com/porsche')
+        self.assertIsPlaylist(result)
+        self.assertEqual(result['id'], 'porsche')
+        self.assertTrue(len(result['entries']) >= 2)
+        test_video = next(
+            e for e in result['entries']
+            if e['id'] == '614605558512799803_462752227')
+        dl.add_default_extra_info(test_video, ie, '(irrelevant URL)')
+        dl.process_video_result(test_video, download=False)
+        EXPECTED = {
+            'id': '614605558512799803_462752227',
+            'ext': 'mp4',
+            'title': '#Porsche Intelligent Performance.',
+            'thumbnail': 're:^https?://.*\.jpg',
+            'uploader': 'Porsche',
+            'uploader_id': 'porsche',
+            'timestamp': 1387486713,
+            'upload_date': '20131219',
+        }
+        expect_info_dict(self, EXPECTED, test_video)
+
+    def test_CSpan_playlist(self):
+        dl = FakeYDL()
+        ie = CSpanIE(dl)
+        result = ie.extract(
+            'http://www.c-span.org/video/?318608-1/gm-ignition-switch-recall')
+        self.assertIsPlaylist(result)
+        self.assertEqual(result['id'], '342759')
+        self.assertEqual(
+            result['title'], 'General Motors Ignition Switch Recall')
+        whole_duration = sum(e['duration'] for e in result['entries'])
+        self.assertEqual(whole_duration, 14855)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -10,6 +10,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Various small unit tests
 import io
+import json
 import xml.etree.ElementTree
 
 #from youtube_dl.utils import htmlentity_transform
@@ -33,7 +34,11 @@ from youtube_dl.utils import (
     unified_strdate,
     unsmuggle_url,
     url_basename,
+    urlencode_postdata,
     xpath_with_ns,
+    parse_iso8601,
+    strip_jsonp,
+    uppercase_escape,
 )
 
 if sys.version_info < (3, 0):
@@ -260,6 +265,24 @@ class TestUtil(unittest.TestCase):
             ; or after this
             bam''')
         self.assertEqual(read_batch_urls(f), [u'foo', u'bar', u'baz', u'bam'])
+
+    def test_urlencode_postdata(self):
+        data = urlencode_postdata({'username': 'foo@bar.com', 'password': '1234'})
+        self.assertTrue(isinstance(data, bytes))
+
+    def test_parse_iso8601(self):
+        self.assertEqual(parse_iso8601('2014-03-23T23:04:26+0100'), 1395612266)
+        self.assertEqual(parse_iso8601('2014-03-23T22:04:26+0000'), 1395612266)
+        self.assertEqual(parse_iso8601('2014-03-23T22:04:26Z'), 1395612266)
+
+    def test_strip_jsonp(self):
+        stripped = strip_jsonp('cb ([ {"id":"532cb",\n\n\n"x":\n3}\n]\n);')
+        d = json.loads(stripped)
+        self.assertEqual(d, [{"id": "532cb", "x": 3}])
+
+    def test_uppercase_escpae(self):
+        self.assertEqual(uppercase_escape(u'aä'), u'aä')
+        self.assertEqual(uppercase_escape(u'\\U0001d550'), u'𝕐')
 
 if __name__ == '__main__':
     unittest.main()

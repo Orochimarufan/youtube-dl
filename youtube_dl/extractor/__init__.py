@@ -1,6 +1,8 @@
 from .academicearth import AcademicEarthCourseIE
 from .addanime import AddAnimeIE
+from .aftonbladet import AftonbladetIE
 from .anitube import AnitubeIE
+from .aol import AolIE
 from .aparat import AparatIE
 from .appletrailers import AppleTrailersIE
 from .archiveorg import ArchiveOrgIE
@@ -9,8 +11,10 @@ from .arte import (
     ArteTvIE,
     ArteTVPlus7IE,
     ArteTVCreativeIE,
+    ArteTVConcertIE,
     ArteTVFutureIE,
     ArteTVDDCIE,
+    ArteTVEmbedIE,
 )
 from .auengine import AUEngineIE
 from .bambuser import BambuserIE, BambuserChannelIE
@@ -22,10 +26,13 @@ from .bloomberg import BloombergIE
 from .br import BRIE
 from .breakcom import BreakIE
 from .brightcove import BrightcoveIE
+from .byutv import BYUtvIE
 from .c56 import C56IE
+from .canal13cl import Canal13clIE
 from .canalplus import CanalplusIE
 from .canalc2 import Canalc2IE
 from .cbs import CBSIE
+from .cbsnews import CBSNewsIE
 from .ceskatelevize import CeskaTelevizeIE
 from .channel9 import Channel9IE
 from .chilloutzone import ChilloutzoneIE
@@ -34,6 +41,7 @@ from .clipfish import ClipfishIE
 from .cliphunter import CliphunterIE
 from .clipsyndicate import ClipsyndicateIE
 from .cmt import CMTIE
+from .cnet import CNETIE
 from .cnn import (
     CNNIE,
     CNNBlogsIE,
@@ -51,17 +59,18 @@ from .dailymotion import (
     DailymotionUserIE,
 )
 from .daum import DaumIE
-from .depositfiles import DepositFilesIE
 from .dotsub import DotsubIE
 from .dreisat import DreiSatIE
 from .defense import DefenseGouvFrIE
 from .discovery import DiscoveryIE
+from .divxstage import DivxStageIE
 from .dropbox import DropboxIE
 from .ebaumsworld import EbaumsWorldIE
 from .ehow import EHowIE
 from .eighttracks import EightTracksIE
 from .eitb import EitbIE
 from .elpais import ElPaisIE
+from .engadget import EngadgetIE
 from .escapist import EscapistIE
 from .everyonesmixtape import EveryonesMixtapeIE
 from .exfm import ExfmIE
@@ -70,12 +79,14 @@ from .facebook import FacebookIE
 from .faz import FazIE
 from .firstpost import FirstpostIE
 from .firsttv import FirstTVIE
+from .fivemin import FiveMinIE
 from .fktv import (
     FKTVIE,
     FKTVPosteckeIE,
 )
 from .flickr import FlickrIE
 from .fourtube import FourTubeIE
+from .franceculture import FranceCultureIE
 from .franceinter import FranceInterIE
 from .francetv import (
     PluzzIE,
@@ -107,7 +118,7 @@ from .imdb import (
 )
 from .ina import InaIE
 from .infoq import InfoQIE
-from .instagram import InstagramIE
+from .instagram import InstagramIE, InstagramUserIE
 from .internetvideoarchive import InternetVideoArchiveIE
 from .iprima import IPrimaIE
 from .ivi import (
@@ -145,10 +156,14 @@ from .mixcloud import MixcloudIE
 from .mpora import MporaIE
 from .mofosex import MofosexIE
 from .mooshare import MooshareIE
+from .morningstar import MorningstarIE
+from .motorsport import MotorsportIE
+from .movshare import MovShareIE
 from .mtv import (
     MTVIE,
     MTVIggyIE,
 )
+from .musicplayon import MusicPlayOnIE
 from .muzu import MuzuTVIE
 from .myspace import MySpaceIE
 from .myspass import MySpassIE
@@ -170,10 +185,14 @@ from .normalboots import NormalbootsIE
 from .novamov import NovaMovIE
 from .nowness import NownessIE
 from .nowvideo import NowVideoIE
+from .ntv import NTVIE
+from .oe1 import OE1IE
 from .ooyala import OoyalaIE
 from .orf import ORFIE
+from .parliamentliveuk import ParliamentLiveUKIE
 from .pbs import PBSIE
 from .photobucket import PhotobucketIE
+from .playvid import PlayvidIE
 from .podomatic import PodomaticIE
 from .pornhd import PornHdIE
 from .pornhub import PornHubIE
@@ -188,16 +207,17 @@ from .ro220 import Ro220IE
 from .rottentomatoes import RottenTomatoesIE
 from .roxwel import RoxwelIE
 from .rtlnow import RTLnowIE
+from .rts import RTSIE
 from .rutube import (
     RutubeIE,
     RutubeChannelIE,
     RutubeMovieIE,
     RutubePersonIE,
 )
+from .rutv import RUTVIE
 from .savefrom import SaveFromIE
 from .servingsys import ServingSysIE
 from .sina import SinaIE
-from .slashdot import SlashdotIE
 from .slideshare import SlideshareIE
 from .smotri import (
     SmotriIE,
@@ -231,6 +251,7 @@ from .theplatform import ThePlatformIE
 from .thisav import ThisAVIE
 from .tinypic import TinyPicIE
 from .toutv import TouTvIE
+from .toypics import ToypicsUserIE, ToypicsIE
 from .traileraddict import TrailerAddictIE
 from .trilulilu import TriluliluIE
 from .trutube import TruTubeIE
@@ -238,20 +259,27 @@ from .tube8 import Tube8IE
 from .tudou import TudouIE
 from .tumblr import TumblrIE
 from .tutv import TutvIE
+from .tvigle import TvigleIE
 from .tvp import TvpIE
+from .udemy import (
+    UdemyIE,
+    UdemyCourseIE
+)
 from .unistra import UnistraIE
+from .urort import UrortIE
 from .ustream import UstreamIE, UstreamChannelIE
 from .vbox7 import Vbox7IE
 from .veehd import VeeHDIE
 from .veoh import VeohIE
 from .vesti import VestiIE
 from .vevo import VevoIE
-from .vice import ViceIE
 from .viddler import ViddlerIE
 from .videobam import VideoBamIE
 from .videodetective import VideoDetectiveIE
+from .videolecturesnet import VideoLecturesNetIE
 from .videofyme import VideofyMeIE
 from .videopremium import VideoPremiumIE
+from .videoweed import VideoWeedIE
 from .vimeo import (
     VimeoIE,
     VimeoChannelIE,
@@ -264,15 +292,21 @@ from .vine import VineIE
 from .viki import VikiIE
 from .vk import VKIE
 from .vube import VubeIE
+from .washingtonpost import WashingtonPostIE
 from .wat import WatIE
+from .wdr import (
+    WDRIE,
+    WDRMausIE,
+)
 from .weibo import WeiboIE
 from .wimp import WimpIE
 from .wistia import WistiaIE
 from .worldstarhiphop import WorldStarHipHopIE
+from .xbef import XBefIE
 from .xhamster import XHamsterIE
 from .xnxx import XNXXIE
 from .xvideos import XVideosIE
-from .xtube import XTubeIE
+from .xtube import XTubeUserIE, XTubeIE
 from .yahoo import (
     YahooIE,
     YahooNewsIE,
@@ -283,19 +317,20 @@ from .youku import YoukuIE
 from .youporn import YouPornIE
 from .youtube import (
     YoutubeIE,
-    YoutubePlaylistIE,
-    YoutubeSearchIE,
-    YoutubeSearchDateIE,
-    YoutubeUserIE,
     YoutubeChannelIE,
-    YoutubeShowIE,
-    YoutubeSubscriptionsIE,
-    YoutubeRecommendedIE,
-    YoutubeTruncatedURLIE,
-    YoutubeWatchLaterIE,
     YoutubeFavouritesIE,
     YoutubeHistoryIE,
+    YoutubePlaylistIE,
+    YoutubeRecommendedIE,
+    YoutubeSearchDateIE,
+    YoutubeSearchIE,
+    YoutubeSearchURLIE,
+    YoutubeShowIE,
+    YoutubeSubscriptionsIE,
     YoutubeTopListIE,
+    YoutubeTruncatedURLIE,
+    YoutubeUserIE,
+    YoutubeWatchLaterIE,
 )
 from .zdf import ZDFIE
 

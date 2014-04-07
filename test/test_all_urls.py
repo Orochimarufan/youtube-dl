@@ -9,7 +9,7 @@ import unittest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
-from test.helper import get_testcases
+from test.helper import gettestcases
 
 from youtube_dl.extractor import (
     FacebookIE,
@@ -71,6 +71,10 @@ class TestAllURLsMatching(unittest.TestCase):
     def test_youtube_truncated(self):
         self.assertMatch('http://www.youtube.com/watch?', ['youtube:truncated_url'])
 
+    def test_youtube_search_matching(self):
+        self.assertMatch('http://www.youtube.com/results?search_query=making+mustard', ['youtube:search_url'])
+        self.assertMatch('https://www.youtube.com/results?baz=bar&search_query=youtube-dl+test+video&filters=video&lclk=video', ['youtube:search_url'])
+
     def test_justin_tv_channelid_matching(self):
         self.assertTrue(JustinTVIE.suitable(u"justin.tv/vanillatv"))
         self.assertTrue(JustinTVIE.suitable(u"twitch.tv/vanillatv"))
@@ -101,7 +105,7 @@ class TestAllURLsMatching(unittest.TestCase):
 
     def test_no_duplicates(self):
         ies = gen_extractors()
-        for tc in get_testcases():
+        for tc in gettestcases():
             url = tc['url']
             for ie in ies:
                 if type(ie).__name__ in ('GenericIE', tc['name'] + 'IE'):
@@ -120,6 +124,8 @@ class TestAllURLsMatching(unittest.TestCase):
 
     def test_vimeo_matching(self):
         self.assertMatch('http://vimeo.com/channels/tributes', ['vimeo:channel'])
+        self.assertMatch('http://vimeo.com/channels/31259', ['vimeo:channel'])
+        self.assertMatch('http://vimeo.com/channels/31259/53576664', ['vimeo'])
         self.assertMatch('http://vimeo.com/user7108434', ['vimeo:user'])
         self.assertMatch('http://vimeo.com/user7108434/videos', ['vimeo:user'])
         self.assertMatch('https://vimeo.com/user21297594/review/75524534/3c257a1b5d', ['vimeo:review'])
@@ -135,6 +141,27 @@ class TestAllURLsMatching(unittest.TestCase):
     def test_pbs(self):
         # https://github.com/rg3/youtube-dl/issues/2350
         self.assertMatch('http://video.pbs.org/viralplayer/2365173446/', ['PBS'])
+        self.assertMatch('http://video.pbs.org/widget/partnerplayer/980042464/', ['PBS'])
+
+    def test_ComedyCentralShows(self):
+        self.assertMatch(
+            'http://thedailyshow.cc.com/extended-interviews/xm3fnq/andrew-napolitano-extended-interview',
+            ['ComedyCentralShows'])
+        self.assertMatch(
+            'http://thecolbertreport.cc.com/videos/29w6fx/-realhumanpraise-for-fox-news',
+            ['ComedyCentralShows'])
+        self.assertMatch(
+            'http://thecolbertreport.cc.com/videos/gh6urb/neil-degrasse-tyson-pt--1?xrs=eml_col_031114',
+            ['ComedyCentralShows'])
+        self.assertMatch(
+            'http://thedailyshow.cc.com/guests/michael-lewis/3efna8/exclusive---michael-lewis-extended-interview-pt--3',
+            ['ComedyCentralShows'])
+
+    def test_yahoo_https(self):
+        # https://github.com/rg3/youtube-dl/issues/2701
+        self.assertMatch(
+            'https://screen.yahoo.com/smartwatches-latest-wearable-gadgets-163745379-cbs.html',
+            ['Yahoo'])
 
 if __name__ == '__main__':
     unittest.main()

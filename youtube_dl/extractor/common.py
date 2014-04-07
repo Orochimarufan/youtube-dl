@@ -74,7 +74,7 @@ class InfoExtractor(object):
                                  "http", "https", "rtsp", "rtmp", "m3u8" or so.
                     * preference Order number of this format. If this field is
                                  present and not None, the formats get sorted
-                                 by this field.
+                                 by this field, regardless of all other values.
                                  -1 for default (order by other properties),
                                  -2 or smaller for less than default.
                     * quality    Order number of the video quality of this
@@ -88,12 +88,18 @@ class InfoExtractor(object):
 
     The following fields are optional:
 
+    display_id      An alternative identifier for the video, not necessarily
+                    unique, but available before title. Typically, id is
+                    something like "4234987", title "Dancing naked mole rats",
+                    and display_id "dancing-naked-mole-rats"
     thumbnails:     A list of dictionaries (with the entries "resolution" and
                     "url") for the varying thumbnails
     thumbnail:      Full URL to a video thumbnail image.
     description:    One-line video description.
     uploader:       Full name of the video uploader.
+    timestamp:      UNIX timestamp of the moment the video became available.
     upload_date:    Video upload date (YYYYMMDD).
+                    If not explicitly set, calculated from timestamp.
     uploader_id:    Nickname or id of the video uploader.
     location:       Physical location of the video.
     subtitles:      The subtitle file contents as a dictionary in the format
@@ -113,9 +119,6 @@ class InfoExtractor(object):
     Subclasses of this one should re-define the _real_initialize() and
     _real_extract() methods and define a _VALID_URL regexp.
     Probably, they should also be added to the list of extractors.
-
-    _real_extract() must return a *list* of information dictionaries as
-    described above.
 
     Finally, the _WORKING attribute should be set to False for broken IEs
     in order to warn the users and skip the tests.
@@ -249,6 +252,17 @@ class InfoExtractor(object):
                 outf.write(webpage_bytes)
 
         content = webpage_bytes.decode(encoding, 'replace')
+
+        if (u'<title>Access to this site is blocked</title>' in content and
+                u'Websense' in content[:512]):
+            msg = u'Access to this webpage has been blocked by Websense filtering software in your network.'
+            blocked_iframe = self._html_search_regex(
+                r'<iframe src="([^"]+)"', content,
+                u'Websense information URL', default=None)
+            if blocked_iframe:
+                msg += u' Visit %s for more details' % blocked_iframe
+            raise ExtractorError(msg, expected=True)
+
         return (content, urlh)
 
     def _download_webpage(self, url_or_request, video_id, note=None, errnote=None, fatal=True):
@@ -432,14 +446,14 @@ class InfoExtractor(object):
         if secure: regexes = self._og_regexes('video:secure_url') + regexes
         return self._html_search_regex(regexes, html, name, **kargs)
 
-    def _html_search_meta(self, name, html, display_name=None):
+    def _html_search_meta(self, name, html, display_name=None, fatal=False):
         if display_name is None:
             display_name = name
         return self._html_search_regex(
             r'''(?ix)<meta
                     (?=[^>]+(?:itemprop|name|property)=["\']%s["\'])
                     [^>]+content=["\']([^"\']+)["\']''' % re.escape(name),
-            html, display_name, fatal=False)
+            html, display_name, fatal=fatal)
 
     def _dc_search_uploader(self, html):
         return self._html_search_meta('dc.creator', html, 'uploader')

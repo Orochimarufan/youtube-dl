@@ -23,6 +23,8 @@ class HttpFD(FileDownloader):
         headers = {'Youtubedl-no-compression': 'True'}
         if 'user_agent' in info_dict:
             headers['Youtubedl-user-agent'] = info_dict['user_agent']
+        if 'http_referer' in info_dict:
+            headers['Referer'] = info_dict['http_referer']
         basic_request = compat_urllib_request.Request(url, None, headers)
         request = compat_urllib_request.Request(url, None, headers)
 
@@ -49,7 +51,7 @@ class HttpFD(FileDownloader):
         while count <= retries:
             # Establish connection
             try:
-                data = compat_urllib_request.urlopen(request)
+                data = self.ydl.urlopen(request)
                 break
             except (compat_urllib_error.HTTPError, ) as err:
                 if (err.code < 500 or err.code >= 600) and err.code != 416:
@@ -59,7 +61,7 @@ class HttpFD(FileDownloader):
                     # Unable to resume (requested range not satisfiable)
                     try:
                         # Open the connection again without the range header
-                        data = compat_urllib_request.urlopen(basic_request)
+                        data = self.ydl.urlopen(basic_request)
                         content_length = data.info()['Content-Length']
                     except (compat_urllib_error.HTTPError, ) as err:
                         if err.code < 500 or err.code >= 600:

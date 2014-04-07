@@ -7,13 +7,13 @@ import itertools
 import json
 import os.path
 import re
-import string
 import struct
 import traceback
 import zlib
 
 from .common import InfoExtractor, SearchInfoExtractor
 from .subtitles import SubtitlesInfoExtractor
+from ..jsinterp import JSInterpreter
 from ..utils import (
     compat_chr,
     compat_parse_qs,
@@ -176,32 +176,32 @@ class YoutubeIE(YoutubeBaseInfoExtractor, SubtitlesInfoExtractor):
 
 
         # 3d videos
-        '82': {'ext': 'mp4', 'height': 360, 'resolution': '360p', 'format_note': '3D', 'preference': -20},
-        '83': {'ext': 'mp4', 'height': 480, 'resolution': '480p', 'format_note': '3D', 'preference': -20},
-        '84': {'ext': 'mp4', 'height': 720, 'resolution': '720p', 'format_note': '3D', 'preference': -20},
-        '85': {'ext': 'mp4', 'height': 1080, 'resolution': '1080p', 'format_note': '3D', 'preference': -20},
-        '100': {'ext': 'webm', 'height': 360, 'resolution': '360p', 'format_note': '3D', 'preference': -20},
-        '101': {'ext': 'webm', 'height': 480, 'resolution': '480p', 'format_note': '3D', 'preference': -20},
-        '102': {'ext': 'webm', 'height': 720, 'resolution': '720p', 'format_note': '3D', 'preference': -20},
+        '82': {'ext': 'mp4', 'height': 360, 'format_note': '3D', 'preference': -20},
+        '83': {'ext': 'mp4', 'height': 480, 'format_note': '3D', 'preference': -20},
+        '84': {'ext': 'mp4', 'height': 720, 'format_note': '3D', 'preference': -20},
+        '85': {'ext': 'mp4', 'height': 1080, 'format_note': '3D', 'preference': -20},
+        '100': {'ext': 'webm', 'height': 360, 'format_note': '3D', 'preference': -20},
+        '101': {'ext': 'webm', 'height': 480, 'format_note': '3D', 'preference': -20},
+        '102': {'ext': 'webm', 'height': 720, 'format_note': '3D', 'preference': -20},
 
         # Apple HTTP Live Streaming
-        '92': {'ext': 'mp4', 'height': 240, 'resolution': '240p', 'format_note': 'HLS', 'preference': -10},
-        '93': {'ext': 'mp4', 'height': 360, 'resolution': '360p', 'format_note': 'HLS', 'preference': -10},
-        '94': {'ext': 'mp4', 'height': 480, 'resolution': '480p', 'format_note': 'HLS', 'preference': -10},
-        '95': {'ext': 'mp4', 'height': 720, 'resolution': '720p', 'format_note': 'HLS', 'preference': -10},
-        '96': {'ext': 'mp4', 'height': 1080, 'resolution': '1080p', 'format_note': 'HLS', 'preference': -10},
-        '132': {'ext': 'mp4', 'height': 240, 'resolution': '240p', 'format_note': 'HLS', 'preference': -10},
-        '151': {'ext': 'mp4', 'height': 72, 'resolution': '72p', 'format_note': 'HLS', 'preference': -10},
+        '92': {'ext': 'mp4', 'height': 240, 'format_note': 'HLS', 'preference': -10},
+        '93': {'ext': 'mp4', 'height': 360, 'format_note': 'HLS', 'preference': -10},
+        '94': {'ext': 'mp4', 'height': 480, 'format_note': 'HLS', 'preference': -10},
+        '95': {'ext': 'mp4', 'height': 720, 'format_note': 'HLS', 'preference': -10},
+        '96': {'ext': 'mp4', 'height': 1080, 'format_note': 'HLS', 'preference': -10},
+        '132': {'ext': 'mp4', 'height': 240, 'format_note': 'HLS', 'preference': -10},
+        '151': {'ext': 'mp4', 'height': 72, 'format_note': 'HLS', 'preference': -10},
 
         # DASH mp4 video
-        '133': {'ext': 'mp4', 'height': 240, 'resolution': '240p', 'format_note': 'DASH video', 'preference': -40},
-        '134': {'ext': 'mp4', 'height': 360, 'resolution': '360p', 'format_note': 'DASH video', 'preference': -40},
-        '135': {'ext': 'mp4', 'height': 480, 'resolution': '480p', 'format_note': 'DASH video', 'preference': -40},
-        '136': {'ext': 'mp4', 'height': 720, 'resolution': '720p', 'format_note': 'DASH video', 'preference': -40},
-        '137': {'ext': 'mp4', 'height': 1080, 'resolution': '1080p', 'format_note': 'DASH video', 'preference': -40},
-        '138': {'ext': 'mp4', 'height': 2160, 'resolution': '2160p', 'format_note': 'DASH video', 'preference': -40},
-        '160': {'ext': 'mp4', 'height': 192, 'resolution': '192p', 'format_note': 'DASH video', 'preference': -40},
-        '264': {'ext': 'mp4', 'height': 1440, 'resolution': '1440p', 'format_note': 'DASH video', 'preference': -40},
+        '133': {'ext': 'mp4', 'height': 240, 'format_note': 'DASH video', 'acodec': 'none', 'preference': -40},
+        '134': {'ext': 'mp4', 'height': 360, 'format_note': 'DASH video', 'acodec': 'none', 'preference': -40},
+        '135': {'ext': 'mp4', 'height': 480, 'format_note': 'DASH video', 'acodec': 'none', 'preference': -40},
+        '136': {'ext': 'mp4', 'height': 720, 'format_note': 'DASH video', 'acodec': 'none', 'preference': -40},
+        '137': {'ext': 'mp4', 'height': 1080, 'format_note': 'DASH video', 'acodec': 'none', 'preference': -40},
+        '138': {'ext': 'mp4', 'height': 2160, 'format_note': 'DASH video', 'acodec': 'none', 'preference': -40},
+        '160': {'ext': 'mp4', 'height': 144, 'format_note': 'DASH video', 'acodec': 'none', 'preference': -40},
+        '264': {'ext': 'mp4', 'height': 1440, 'format_note': 'DASH video', 'acodec': 'none', 'preference': -40},
 
         # Dash mp4 audio
         '139': {'ext': 'm4a', 'format_note': 'DASH audio', 'vcodec': 'none', 'abr': 48, 'preference': -50},
@@ -209,19 +209,19 @@ class YoutubeIE(YoutubeBaseInfoExtractor, SubtitlesInfoExtractor):
         '141': {'ext': 'm4a', 'format_note': 'DASH audio', 'vcodec': 'none', 'abr': 256, 'preference': -50},
 
         # Dash webm
-        '167': {'ext': 'webm', 'height': 360, 'width': 640, 'format_note': 'DASH video', 'container': 'webm', 'vcodec': 'VP8', 'acodec': 'none', 'preference': -40},
-        '168': {'ext': 'webm', 'height': 480, 'width': 854, 'format_note': 'DASH video', 'container': 'webm', 'vcodec': 'VP8', 'acodec': 'none', 'preference': -40},
-        '169': {'ext': 'webm', 'height': 720, 'width': 1280, 'format_note': 'DASH video', 'container': 'webm', 'vcodec': 'VP8', 'acodec': 'none', 'preference': -40},
-        '170': {'ext': 'webm', 'height': 1080, 'width': 1920, 'format_note': 'DASH video', 'container': 'webm', 'vcodec': 'VP8', 'acodec': 'none', 'preference': -40},
-        '218': {'ext': 'webm', 'height': 480, 'width': 854, 'format_note': 'DASH video', 'container': 'webm', 'vcodec': 'VP8', 'acodec': 'none', 'preference': -40},
-        '219': {'ext': 'webm', 'height': 480, 'width': 854, 'format_note': 'DASH video', 'container': 'webm', 'vcodec': 'VP8', 'acodec': 'none', 'preference': -40},
-        '242': {'ext': 'webm', 'height': 240, 'resolution': '240p', 'format_note': 'DASH webm', 'preference': -40},
-        '243': {'ext': 'webm', 'height': 360, 'resolution': '360p', 'format_note': 'DASH webm', 'preference': -40},
-        '244': {'ext': 'webm', 'height': 480, 'resolution': '480p', 'format_note': 'DASH webm', 'preference': -40},
-        '245': {'ext': 'webm', 'height': 480, 'resolution': '480p', 'format_note': 'DASH webm', 'preference': -40},
-        '246': {'ext': 'webm', 'height': 480, 'resolution': '480p', 'format_note': 'DASH webm', 'preference': -40},
-        '247': {'ext': 'webm', 'height': 720, 'resolution': '720p', 'format_note': 'DASH webm', 'preference': -40},
-        '248': {'ext': 'webm', 'height': 1080, 'resolution': '1080p', 'format_note': 'DASH webm', 'preference': -40},
+        '167': {'ext': 'webm', 'height': 360, 'width': 640, 'format_note': 'DASH video', 'acodec': 'none', 'container': 'webm', 'vcodec': 'VP8', 'acodec': 'none', 'preference': -40},
+        '168': {'ext': 'webm', 'height': 480, 'width': 854, 'format_note': 'DASH video', 'acodec': 'none', 'container': 'webm', 'vcodec': 'VP8', 'acodec': 'none', 'preference': -40},
+        '169': {'ext': 'webm', 'height': 720, 'width': 1280, 'format_note': 'DASH video', 'acodec': 'none', 'container': 'webm', 'vcodec': 'VP8', 'acodec': 'none', 'preference': -40},
+        '170': {'ext': 'webm', 'height': 1080, 'width': 1920, 'format_note': 'DASH video', 'acodec': 'none', 'container': 'webm', 'vcodec': 'VP8', 'acodec': 'none', 'preference': -40},
+        '218': {'ext': 'webm', 'height': 480, 'width': 854, 'format_note': 'DASH video', 'acodec': 'none', 'container': 'webm', 'vcodec': 'VP8', 'acodec': 'none', 'preference': -40},
+        '219': {'ext': 'webm', 'height': 480, 'width': 854, 'format_note': 'DASH video', 'acodec': 'none', 'container': 'webm', 'vcodec': 'VP8', 'acodec': 'none', 'preference': -40},
+        '242': {'ext': 'webm', 'height': 240, 'format_note': 'DASH webm', 'preference': -40},
+        '243': {'ext': 'webm', 'height': 360, 'format_note': 'DASH webm', 'preference': -40},
+        '244': {'ext': 'webm', 'height': 480, 'format_note': 'DASH webm', 'preference': -40},
+        '245': {'ext': 'webm', 'height': 480, 'format_note': 'DASH webm', 'preference': -40},
+        '246': {'ext': 'webm', 'height': 480, 'format_note': 'DASH webm', 'preference': -40},
+        '247': {'ext': 'webm', 'height': 720, 'format_note': 'DASH webm', 'preference': -40},
+        '248': {'ext': 'webm', 'height': 1080, 'format_note': 'DASH webm', 'preference': -40},
 
         # Dash webm audio
         '171': {'ext': 'webm', 'vcodec': 'none', 'format_note': 'DASH webm audio', 'abr': 48, 'preference': -50},
@@ -438,113 +438,10 @@ class YoutubeIE(YoutubeBaseInfoExtractor, SubtitlesInfoExtractor):
     def _parse_sig_js(self, jscode):
         funcname = self._search_regex(
             r'signature=([a-zA-Z]+)', jscode,
-            u'Initial JS player signature function name')
+             u'Initial JS player signature function name')
 
-        functions = {}
-
-        def argidx(varname):
-            return string.lowercase.index(varname)
-
-        def interpret_statement(stmt, local_vars, allow_recursion=20):
-            if allow_recursion < 0:
-                raise ExtractorError(u'Recursion limit reached')
-
-            if stmt.startswith(u'var '):
-                stmt = stmt[len(u'var '):]
-            ass_m = re.match(r'^(?P<out>[a-z]+)(?:\[(?P<index>[^\]]+)\])?' +
-                             r'=(?P<expr>.*)$', stmt)
-            if ass_m:
-                if ass_m.groupdict().get('index'):
-                    def assign(val):
-                        lvar = local_vars[ass_m.group('out')]
-                        idx = interpret_expression(ass_m.group('index'),
-                                                   local_vars, allow_recursion)
-                        assert isinstance(idx, int)
-                        lvar[idx] = val
-                        return val
-                    expr = ass_m.group('expr')
-                else:
-                    def assign(val):
-                        local_vars[ass_m.group('out')] = val
-                        return val
-                    expr = ass_m.group('expr')
-            elif stmt.startswith(u'return '):
-                assign = lambda v: v
-                expr = stmt[len(u'return '):]
-            else:
-                raise ExtractorError(
-                    u'Cannot determine left side of statement in %r' % stmt)
-
-            v = interpret_expression(expr, local_vars, allow_recursion)
-            return assign(v)
-
-        def interpret_expression(expr, local_vars, allow_recursion):
-            if expr.isdigit():
-                return int(expr)
-
-            if expr.isalpha():
-                return local_vars[expr]
-
-            m = re.match(r'^(?P<in>[a-z]+)\.(?P<member>.*)$', expr)
-            if m:
-                member = m.group('member')
-                val = local_vars[m.group('in')]
-                if member == 'split("")':
-                    return list(val)
-                if member == 'join("")':
-                    return u''.join(val)
-                if member == 'length':
-                    return len(val)
-                if member == 'reverse()':
-                    return val[::-1]
-                slice_m = re.match(r'slice\((?P<idx>.*)\)', member)
-                if slice_m:
-                    idx = interpret_expression(
-                        slice_m.group('idx'), local_vars, allow_recursion-1)
-                    return val[idx:]
-
-            m = re.match(
-                r'^(?P<in>[a-z]+)\[(?P<idx>.+)\]$', expr)
-            if m:
-                val = local_vars[m.group('in')]
-                idx = interpret_expression(m.group('idx'), local_vars,
-                                           allow_recursion-1)
-                return val[idx]
-
-            m = re.match(r'^(?P<a>.+?)(?P<op>[%])(?P<b>.+?)$', expr)
-            if m:
-                a = interpret_expression(m.group('a'),
-                                         local_vars, allow_recursion)
-                b = interpret_expression(m.group('b'),
-                                         local_vars, allow_recursion)
-                return a % b
-
-            m = re.match(
-                r'^(?P<func>[a-zA-Z$]+)\((?P<args>[a-z0-9,]+)\)$', expr)
-            if m:
-                fname = m.group('func')
-                if fname not in functions:
-                    functions[fname] = extract_function(fname)
-                argvals = [int(v) if v.isdigit() else local_vars[v]
-                           for v in m.group('args').split(',')]
-                return functions[fname](argvals)
-            raise ExtractorError(u'Unsupported JS expression %r' % expr)
-
-        def extract_function(funcname):
-            func_m = re.search(
-                r'function ' + re.escape(funcname) +
-                r'\((?P<args>[a-z,]+)\){(?P<code>[^}]+)}',
-                jscode)
-            argnames = func_m.group('args').split(',')
-
-            def resf(args):
-                local_vars = dict(zip(argnames, args))
-                for stmt in func_m.group('code').split(';'):
-                    res = interpret_statement(stmt, local_vars)
-                return res
-            return resf
-
-        initial_function = extract_function(funcname)
+        jsi = JSInterpreter(jscode)
+        initial_function = jsi.extract_function(funcname)
         return lambda s: initial_function([s])
 
     def _parse_sig_swf(self, file_contents):
@@ -1130,14 +1027,18 @@ class YoutubeIE(YoutubeBaseInfoExtractor, SubtitlesInfoExtractor):
         return self._download_webpage(url, video_id, note=u'Searching for annotations.', errnote=u'Unable to download video annotations.')
 
     def _real_extract(self, url):
+        proto = (
+            u'http' if self._downloader.params.get('prefer_insecure', False)
+            else u'https')
+
         # Extract original video URL from URL with redirection, like age verification, using next_url parameter
         mobj = re.search(self._NEXT_URL_RE, url)
         if mobj:
-            url = 'https://www.youtube.com/' + compat_urllib_parse.unquote(mobj.group(1)).lstrip('/')
+            url = proto + '://www.youtube.com/' + compat_urllib_parse.unquote(mobj.group(1)).lstrip('/')
         video_id = self.extract_id(url)
 
         # Get video webpage
-        url = 'https://www.youtube.com/watch?v=%s&gl=US&hl=en&has_verified=1' % video_id
+        url = proto + '://www.youtube.com/watch?v=%s&gl=US&hl=en&has_verified=1' % video_id
         video_webpage = self._download_webpage(url, video_id)
 
         # Attempt to extract SWF player URL
@@ -1162,7 +1063,7 @@ class YoutubeIE(YoutubeBaseInfoExtractor, SubtitlesInfoExtractor):
                                                   'asv': 3,
                                                   'sts':'1588',
                                                   })
-            video_info_url = 'https://www.youtube.com/get_video_info?' + data
+            video_info_url = proto + '://www.youtube.com/get_video_info?' + data
             video_info_webpage = self._download_webpage(video_info_url, video_id,
                                     note=False,
                                     errnote='unable to download video info webpage')
@@ -1170,7 +1071,7 @@ class YoutubeIE(YoutubeBaseInfoExtractor, SubtitlesInfoExtractor):
         else:
             age_gate = False
             for el_type in ['&el=embedded', '&el=detailpage', '&el=vevo', '']:
-                video_info_url = ('https://www.youtube.com/get_video_info?&video_id=%s%s&ps=default&eurl=&gl=US&hl=en'
+                video_info_url = (proto + '://www.youtube.com/get_video_info?&video_id=%s%s&ps=default&eurl=&gl=US&hl=en'
                         % (video_id, el_type))
                 video_info_webpage = self._download_webpage(video_info_url, video_id,
                                         note=False,
@@ -1285,10 +1186,11 @@ class YoutubeIE(YoutubeBaseInfoExtractor, SubtitlesInfoExtractor):
 
         # Decide which formats to download
         try:
-            mobj = re.search(r';ytplayer.config = ({.*?});', video_webpage)
+            mobj = re.search(r';ytplayer\.config\s*=\s*({.*?});', video_webpage)
             if not mobj:
                 raise ValueError('Could not find vevo ID')
-            ytplayer_config = json.loads(mobj.group(1))
+            json_code = uppercase_escape(mobj.group(1))
+            ytplayer_config = json.loads(json_code)
             args = ytplayer_config['args']
             # Easy way to know if the 's' value is in url_encoded_fmt_stream_map
             # this signatures are encrypted
@@ -1444,7 +1346,7 @@ class YoutubeIE(YoutubeBaseInfoExtractor, SubtitlesInfoExtractor):
             'duration':     video_duration,
             'age_limit':    18 if age_gate else 0,
             'annotations':  video_annotations,
-            'webpage_url': 'https://www.youtube.com/watch?v=%s' % video_id,
+            'webpage_url': proto + '://www.youtube.com/watch?v=%s' % video_id,
             'view_count':   view_count,
             'like_count': like_count,
             'dislike_count': dislike_count,
@@ -1544,12 +1446,15 @@ class YoutubePlaylistIE(YoutubeBaseInfoExtractor):
                 break
 
             more = self._download_json(
-                'https://youtube.com/%s' % mobj.group('more'), playlist_id, 'Downloading page #%s' % page_num)
+                'https://youtube.com/%s' % mobj.group('more'), playlist_id,
+                'Downloading page #%s' % page_num,
+                transform_source=uppercase_escape)
             content_html = more['content_html']
             more_widget_html = more['load_more_widget_html']
 
         playlist_title = self._html_search_regex(
-                r'<h1 class="pl-header-title">\s*(.*?)\s*</h1>', page, u'title')
+            r'(?s)<h1 class="pl-header-title[^"]*">\s*(.*?)\s*</h1>',
+            page, u'title')
 
         url_results = self._ids_to_results(ids)
         return self.playlist_result(url_results, playlist_id, playlist_title)
@@ -1645,7 +1550,7 @@ class YoutubeChannelIE(InfoExtractor):
 
 class YoutubeUserIE(InfoExtractor):
     IE_DESC = u'YouTube.com user videos (URL or "ytuser" keyword)'
-    _VALID_URL = r'(?:(?:(?:https?://)?(?:\w+\.)?youtube\.com/(?:user/)?(?!(?:attribution_link|watch)(?:$|[^a-z_A-Z0-9-])))|ytuser:)(?!feed/)([A-Za-z0-9_-]+)'
+    _VALID_URL = r'(?:(?:(?:https?://)?(?:\w+\.)?youtube\.com/(?:user/)?(?!(?:attribution_link|watch|results)(?:$|[^a-z_A-Z0-9-])))|ytuser:)(?!feed/)([A-Za-z0-9_-]+)'
     _TEMPLATE_URL = 'https://gdata.youtube.com/feeds/api/users/%s'
     _GDATA_PAGE_SIZE = 50
     _GDATA_URL = 'https://gdata.youtube.com/feeds/api/users/%s/uploads?max-results=%d&start-index=%d&alt=json'
@@ -1707,7 +1612,7 @@ class YoutubeUserIE(InfoExtractor):
 
 class YoutubeSearchIE(SearchInfoExtractor):
     IE_DESC = u'YouTube.com searches'
-    _API_URL = 'https://gdata.youtube.com/feeds/api/videos?q=%s&start-index=%i&max-results=50&v=2&alt=jsonc'
+    _API_URL = u'https://gdata.youtube.com/feeds/api/videos?q=%s&start-index=%i&max-results=50&v=2&alt=jsonc'
     _MAX_RESULTS = 1000
     IE_NAME = u'youtube:search'
     _SEARCH_KEY = 'ytsearch'
@@ -1718,9 +1623,12 @@ class YoutubeSearchIE(SearchInfoExtractor):
         video_ids = []
         pagenum = 0
         limit = n
+        PAGE_SIZE = 50
 
-        while (50 * pagenum) < limit:
-            result_url = self._API_URL % (compat_urllib_parse.quote_plus(query), (50*pagenum)+1)
+        while (PAGE_SIZE * pagenum) < limit:
+            result_url = self._API_URL % (
+                compat_urllib_parse.quote_plus(query.encode('utf-8')),
+                (PAGE_SIZE * pagenum) + 1)
             data_json = self._download_webpage(
                 result_url, video_id=u'query "%s"' % query,
                 note=u'Downloading page %s' % (pagenum + 1),
@@ -1744,11 +1652,49 @@ class YoutubeSearchIE(SearchInfoExtractor):
                   for video_id in video_ids]
         return self.playlist_result(videos, query)
 
+
 class YoutubeSearchDateIE(YoutubeSearchIE):
     IE_NAME = YoutubeSearchIE.IE_NAME + ':date'
     _API_URL = 'https://gdata.youtube.com/feeds/api/videos?q=%s&start-index=%i&max-results=50&v=2&alt=jsonc&orderby=published'
     _SEARCH_KEY = 'ytsearchdate'
     IE_DESC = u'YouTube.com searches, newest videos first'
+
+
+class YoutubeSearchURLIE(InfoExtractor):
+    IE_DESC = u'YouTube.com search URLs'
+    IE_NAME = u'youtube:search_url'
+    _VALID_URL = r'https?://(?:www\.)?youtube\.com/results\?(.*?&)?search_query=(?P<query>[^&]+)(?:[&]|$)'
+
+    def _real_extract(self, url):
+        mobj = re.match(self._VALID_URL, url)
+        query = compat_urllib_parse.unquote_plus(mobj.group('query'))
+
+        webpage = self._download_webpage(url, query)
+        result_code = self._search_regex(
+            r'(?s)<ol id="search-results"(.*?)</ol>', webpage, u'result HTML')
+
+        part_codes = re.findall(
+            r'(?s)<h3 class="yt-lockup-title">(.*?)</h3>', result_code)
+        entries = []
+        for part_code in part_codes:
+            part_title = self._html_search_regex(
+                r'(?s)title="([^"]+)"', part_code, 'item title', fatal=False)
+            part_url_snippet = self._html_search_regex(
+                r'(?s)href="([^"]+)"', part_code, 'item URL')
+            part_url = compat_urlparse.urljoin(
+                'https://www.youtube.com/', part_url_snippet)
+            entries.append({
+                '_type': 'url',
+                'url': part_url,
+                'title': part_title,
+            })
+
+        return {
+            '_type': 'playlist',
+            'entries': entries,
+            'title': query,
+        }
+
 
 class YoutubeShowIE(InfoExtractor):
     IE_DESC = u'YouTube.com (multi-season) shows'
@@ -1793,11 +1739,10 @@ class YoutubeFeedsInfoExtractor(YoutubeBaseInfoExtractor):
         feed_entries = []
         paging = 0
         for i in itertools.count(1):
-            info = self._download_webpage(self._FEED_TEMPLATE % paging,
+            info = self._download_json(self._FEED_TEMPLATE % paging,
                                           u'%s feed' % self._FEED_NAME,
                                           u'Downloading page %s' % i)
-            info = json.loads(info)
-            feed_html = info['feed_html']
+            feed_html = info.get('feed_html') or info.get('content_html')
             m_ids = re.finditer(r'"/watch\?v=(.*?)["&]', feed_html)
             ids = orderedSet(m.group(1) for m in m_ids)
             feed_entries.extend(
@@ -1809,7 +1754,7 @@ class YoutubeFeedsInfoExtractor(YoutubeBaseInfoExtractor):
         return self.playlist_result(feed_entries, playlist_title=self._PLAYLIST_TITLE)
 
 class YoutubeSubscriptionsIE(YoutubeFeedsInfoExtractor):
-    IE_DESC = u'YouTube.com subscriptions feed, "ytsubs" keyword(requires authentication)'
+    IE_DESC = u'YouTube.com subscriptions feed, "ytsubs" keyword (requires authentication)'
     _VALID_URL = r'https?://www\.youtube\.com/feed/subscriptions|:ytsubs(?:criptions)?'
     _FEED_NAME = 'subscriptions'
     _PLAYLIST_TITLE = u'Youtube Subscriptions'
