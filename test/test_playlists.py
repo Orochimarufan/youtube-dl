@@ -43,6 +43,7 @@ from youtube_dl.extractor import (
     XTubeUserIE,
     InstagramUserIE,
     CSpanIE,
+    AolIE,
 )
 
 
@@ -191,8 +192,8 @@ class TestPlaylists(unittest.TestCase):
         self.assertIsPlaylist(result)
         self.assertEqual(result['id'], 'dezhurnyi_angel')
         self.assertEqual(result['title'], 'Дежурный ангел (2010 - 2012)')
-        self.assertTrue(len(result['entries']) >= 36)
-        
+        self.assertTrue(len(result['entries']) >= 23)
+
     def test_ivi_compilation_season(self):
         dl = FakeYDL()
         ie = IviCompilationIE(dl)
@@ -200,7 +201,7 @@ class TestPlaylists(unittest.TestCase):
         self.assertIsPlaylist(result)
         self.assertEqual(result['id'], 'dezhurnyi_angel/season2')
         self.assertEqual(result['title'], 'Дежурный ангел (2010 - 2012) 2 сезон')
-        self.assertTrue(len(result['entries']) >= 20)
+        self.assertTrue(len(result['entries']) >= 7)
         
     def test_imdb_list(self):
         dl = FakeYDL()
@@ -327,6 +328,16 @@ class TestPlaylists(unittest.TestCase):
         whole_duration = sum(e['duration'] for e in result['entries'])
         self.assertEqual(whole_duration, 14855)
 
+    def test_aol_playlist(self):
+        dl = FakeYDL()
+        ie = AolIE(dl)
+        result = ie.extract(
+            'http://on.aol.com/playlist/brace-yourself---todays-weirdest-news-152147?icid=OnHomepageC4_Omg_Img#_videoid=518184316')
+        self.assertIsPlaylist(result)
+        self.assertEqual(result['id'], '152147')
+        self.assertEqual(
+            result['title'], 'Brace Yourself - Today\'s Weirdest News')
+        self.assertTrue(len(result['entries']) >= 10)
 
 if __name__ == '__main__':
     unittest.main()

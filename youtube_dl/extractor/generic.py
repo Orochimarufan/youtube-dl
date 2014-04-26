@@ -35,9 +35,10 @@ class GenericIE(InfoExtractor):
     _TESTS = [
         {
             'url': 'http://www.hodiho.fr/2013/02/regis-plante-sa-jeep.html',
-            'file': '13601338388002.mp4',
-            'md5': '6e15c93721d7ec9e9ca3fdbf07982cfd',
+            'md5': '85b90ccc9d73b4acd9138d3af4c27f89',
             'info_dict': {
+                'id': '13601338388002',
+                'ext': 'mp4',
                 'uploader': 'www.hodiho.fr',
                 'title': 'R\u00e9gis plante sa Jeep',
             }
@@ -46,8 +47,9 @@ class GenericIE(InfoExtractor):
         {
             'add_ie': ['Bandcamp'],
             'url': 'http://bronyrock.com/track/the-pony-mash',
-            'file': '3235767654.mp3',
             'info_dict': {
+                'id': '3235767654',
+                'ext': 'mp3',
                 'title': 'The Pony Mash',
                 'uploader': 'M_Pallante',
             },
@@ -73,9 +75,10 @@ class GenericIE(InfoExtractor):
         {
             # https://github.com/rg3/youtube-dl/issues/2253
             'url': 'http://bcove.me/i6nfkrc3',
-            'file': '3101154703001.mp4',
             'md5': '0ba9446db037002366bab3b3eb30c88c',
             'info_dict': {
+                'id': '3101154703001',
+                'ext': 'mp4',
                 'title': 'Still no power',
                 'uploader': 'thestar.com',
                 'description': 'Mississauga resident David Farmer is still out of power as a result of the ice storm a month ago. To keep the house warm, Farmer cuts wood from his property for a wood burning stove downstairs.',
@@ -236,6 +239,16 @@ class GenericIE(InfoExtractor):
                 'uploader_id': 'rbctv_2012_4',
             },
         },
+        # Condé Nast embed
+        {
+            'url': 'http://www.wired.com/2014/04/honda-asimo/',
+            'md5': 'ba0dfe966fa007657bd1443ee672db0f',
+            'info_dict': {
+                'id': '53501be369702d3275860000',
+                'ext': 'mp4',
+                'title': 'Honda’s  New Asimo Robot Is More Human Than Ever',
+            }
+        }
     ]
 
     def report_download_webpage(self, video_id):
@@ -482,6 +495,22 @@ class GenericIE(InfoExtractor):
         if mobj:
             return self.url_result(mobj.group(1), 'BlipTV')
 
+        # Look for embedded condenast player
+        matches = re.findall(
+            r'<iframe\s+(?:[a-zA-Z-]+="[^"]+"\s+)*?src="(https?://player\.cnevids\.com/embed/[^"]+")',
+            webpage)
+        if matches:
+            return {
+                '_type': 'playlist',
+                'entries': [{
+                    '_type': 'url',
+                    'ie_key': 'CondeNast',
+                    'url': ma,
+                } for ma in matches],
+                'title': video_title,
+                'id': video_id,
+            }
+
         # Look for Bandcamp pages with custom domain
         mobj = re.search(r'<meta property="og:url"[^>]*?content="(.*?bandcamp\.com.*?)"', webpage)
         if mobj is not None:
@@ -502,7 +531,7 @@ class GenericIE(InfoExtractor):
             return OoyalaIE._build_url_result(mobj.group('ec'))
 
         # Look for Aparat videos
-        mobj = re.search(r'<iframe src="(http://www\.aparat\.com/video/[^"]+)"', webpage)
+        mobj = re.search(r'<iframe .*?src="(http://www\.aparat\.com/video/[^"]+)"', webpage)
         if mobj is not None:
             return self.url_result(mobj.group(1), 'Aparat')
 
@@ -590,7 +619,13 @@ class GenericIE(InfoExtractor):
         mobj = re.search(r'flashvars: [\'"](?:.*&)?file=(http[^\'"&]*)', webpage)
         if mobj is None:
             # Look for gorilla-vid style embedding
-            mobj = re.search(r'(?s)(?:jw_plugins|JWPlayerOptions).*?file\s*:\s*["\'](.*?)["\']', webpage)
+            mobj = re.search(r'''(?sx)
+                (?:
+                    jw_plugins|
+                    JWPlayerOptions|
+                    jwplayer\s*\(\s*["'][^'"]+["']\s*\)\s*\.setup
+                )
+                .*?file\s*:\s*["\'](.*?)["\']''', webpage)
         if mobj is None:
             # Broaden the search a little bit
             mobj = re.search(r'[^A-Za-z0-9]?(?:file|source)=(http[^\'"&]*)', webpage)

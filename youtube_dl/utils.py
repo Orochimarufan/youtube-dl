@@ -594,13 +594,15 @@ def make_HTTPS_handler(opts_no_check_certificate, **kwargs):
 
 class ExtractorError(Exception):
     """Error during info extraction."""
-    def __init__(self, msg, tb=None, expected=False, cause=None):
+    def __init__(self, msg, tb=None, expected=False, cause=None, video_id=None):
         """ tb, if given, is the original traceback (so that it can be printed out).
         If expected is set, this is a normal error message and most likely not a bug in youtube-dl.
         """
 
         if sys.exc_info()[0] in (compat_urllib_error.URLError, socket.timeout, UnavailableVideoError):
             expected = True
+        if video_id is not None:
+            msg = video_id + ': ' + msg
         if not expected:
             msg = msg + u'; please report this issue on https://yt-dl.org/bug . Be sure to call youtube-dl with the --verbose flag and include its complete output. Make sure you are using the latest version; type  youtube-dl -U  to update.'
         super(ExtractorError, self).__init__(msg)
@@ -608,6 +610,7 @@ class ExtractorError(Exception):
         self.traceback = tb
         self.exc_info = sys.exc_info()  # preserve original exception
         self.cause = cause
+        self.video_id = video_id
 
     def format_traceback(self):
         if self.traceback is None:
@@ -910,25 +913,93 @@ def platform_name():
     return res
 
 
-def write_string(s, out=None):
+def _windows_write_string(s, out):
+    """ Returns True if the string was written using special methods,
+    False if it has yet to be written out."""
+    # Adapted from http://stackoverflow.com/a/3259271/35070
+
+    import ctypes
+    import ctypes.wintypes
+
+    WIN_OUTPUT_IDS = {
+        1: -11,
+        2: -12,
+    }
+
+    fileno = out.fileno()
+    if fileno not in WIN_OUTPUT_IDS:
+        return False
+
+    GetStdHandle = ctypes.WINFUNCTYPE(
+        ctypes.wintypes.HANDLE, ctypes.wintypes.DWORD)(
+        ("GetStdHandle", ctypes.windll.kernel32))
+    h = GetStdHandle(WIN_OUTPUT_IDS[fileno])
+
+    WriteConsoleW = ctypes.WINFUNCTYPE(
+        ctypes.wintypes.BOOL, ctypes.wintypes.HANDLE, ctypes.wintypes.LPWSTR,
+        ctypes.wintypes.DWORD, ctypes.POINTER(ctypes.wintypes.DWORD),
+        ctypes.wintypes.LPVOID)(("WriteConsoleW", ctypes.windll.kernel32))
+    written = ctypes.wintypes.DWORD(0)
+
+    GetFileType = ctypes.WINFUNCTYPE(ctypes.wintypes.DWORD, ctypes.wintypes.DWORD)(("GetFileType", ctypes.windll.kernel32))
+    FILE_TYPE_CHAR = 0x0002
+    FILE_TYPE_REMOTE = 0x8000
+    GetConsoleMode = ctypes.WINFUNCTYPE(
+        ctypes.wintypes.BOOL, ctypes.wintypes.HANDLE,
+        ctypes.POINTER(ctypes.wintypes.DWORD))(
+        ("GetConsoleMode", ctypes.windll.kernel32))
+    INVALID_HANDLE_VALUE = ctypes.wintypes.DWORD(-1).value
+
+    def not_a_console(handle):
+        if handle == INVALID_HANDLE_VALUE or handle is None:
+            return True
+        return ((GetFileType(handle) & ~FILE_TYPE_REMOTE) != FILE_TYPE_CHAR
+                or GetConsoleMode(handle, ctypes.byref(ctypes.wintypes.DWORD())) == 0)
+
+    if not_a_console(h):
+        return False
+
+    def next_nonbmp_pos(s):
+        try:
+            return next(i for i, c in enumerate(s) if ord(c) > 0xffff)
+        except StopIteration:
+            return len(s)
+
+    while s:
+        count = min(next_nonbmp_pos(s), 1024)
+
+        ret = WriteConsoleW(
+            h, s, count if count else 2, ctypes.byref(written), None)
+        if ret == 0:
+            raise OSError('Failed to write string')
+        if not count:  # We just wrote a non-BMP character
+            assert written.value == 2
+            s = s[1:]
+        else:
+            assert written.value > 0
+            s = s[written.value:]
+    return True
+
+
+def write_string(s, out=None, encoding=None):
     if out is None:
         out = sys.stderr
     assert type(s) == compat_str
 
+    if sys.platform == 'win32' and encoding is None and hasattr(out, 'fileno'):
+        if _windows_write_string(s, out):
+            return
+
     if ('b' in getattr(out, 'mode', '') or
             sys.version_info[0] < 3):  # Python 2 lies about mode of sys.stderr
-        s = s.encode(preferredencoding(), 'ignore')
-    try:
+        byt = s.encode(encoding or preferredencoding(), 'ignore')
+        out.write(byt)
+    elif hasattr(out, 'buffer'):
+        enc = encoding or getattr(out, 'encoding', None) or preferredencoding()
+        byt = s.encode(enc, 'ignore')
+        out.buffer.write(byt)
+    else:
         out.write(s)
-    except UnicodeEncodeError:
-        # In Windows shells, this can fail even when the codec is just charmap!?
-        # See https://wiki.python.org/moin/PrintFails#Issue
-        if sys.platform == 'win32' and hasattr(out, 'encoding'):
-            s = s.encode(out.encoding, 'ignore').decode(out.encoding)
-            out.write(s)
-        else:
-            raise
-
     out.flush()
 
 
@@ -1177,7 +1248,10 @@ class HEADRequest(compat_urllib_request.Request):
         return "HEAD"
 
 
-def int_or_none(v, scale=1, default=None):
+def int_or_none(v, scale=1, default=None, get_attr=None):
+    if get_attr:
+        if v is not None:
+            v = getattr(v, get_attr, None)
     return default if v is None else (int(v) // scale)
 
 
@@ -1338,3 +1412,14 @@ US_RATINGS = {
 
 def strip_jsonp(code):
     return re.sub(r'(?s)^[a-zA-Z_]+\s*\(\s*(.*)\);\s*?\s*$', r'\1', code)
+
+
+def qualities(quality_ids):
+    """ Get a numeric quality value out of a list of possible values """
+    def q(qid):
+        try:
+            return quality_ids.index(qid)
+        except ValueError:
+            return -1
+    return q
+

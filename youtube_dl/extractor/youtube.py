@@ -151,6 +151,7 @@ class YoutubeIE(YoutubeBaseInfoExtractor, SubtitlesInfoExtractor):
                              )
                          ))
                          |youtu\.be/                                          # just youtu.be/xxxx
+                         |https?://(?:www\.)?cleanvideosearch\.com/media/action/yt/watch\?videoId=
                          )
                      )?                                                       # all until now is optional -> you can pass the naked ID
                      ([0-9A-Za-z_-]{11})                                      # here is it! the YouTube video ID
@@ -251,7 +252,7 @@ class YoutubeIE(YoutubeBaseInfoExtractor, SubtitlesInfoExtractor):
             u"info_dict": {
                 u"upload_date": u"20120506",
                 u"title": u"Icona Pop - I Love It (feat. Charli XCX) [OFFICIAL VIDEO]",
-                u"description": u"md5:5b292926389560516e384ac437c0ec07",
+                u"description": u"md5:fea86fda2d5a5784273df5c7cc994d9f",
                 u"uploader": u"Icona Pop",
                 u"uploader_id": u"IconaPop"
             }
@@ -303,7 +304,7 @@ class YoutubeIE(YoutubeBaseInfoExtractor, SubtitlesInfoExtractor):
                 u'id': u'IB3lcPjvWLA',
                 u'ext': u'm4a',
                 u'title': u'Afrojack - The Spark ft. Spree Wilson',
-                u'description': u'md5:3199ed45ee8836572865580804d7ac0f',
+                u'description': u'md5:9717375db5a9a3992be4668bbf3bc0a8',
                 u'uploader': u'AfrojackVEVO',
                 u'uploader_id': u'AfrojackVEVO',
                 u'upload_date': u'20131011',
@@ -1081,9 +1082,13 @@ class YoutubeIE(YoutubeBaseInfoExtractor, SubtitlesInfoExtractor):
                     break
         if 'token' not in video_info:
             if 'reason' in video_info:
-                raise ExtractorError(u'YouTube said: %s' % video_info['reason'][0], expected=True)
+                raise ExtractorError(
+                    u'YouTube said: %s' % video_info['reason'][0],
+                    expected=True, video_id=video_id)
             else:
-                raise ExtractorError(u'"token" parameter not in video info for unknown reason')
+                raise ExtractorError(
+                    u'"token" parameter not in video info for unknown reason',
+                    video_id=video_id)
 
         if 'view_count' in video_info:
             view_count = int(video_info['view_count'][0])
@@ -1112,7 +1117,7 @@ class YoutubeIE(YoutubeBaseInfoExtractor, SubtitlesInfoExtractor):
 
         # title
         if 'title' in video_info:
-            video_title = compat_urllib_parse.unquote_plus(video_info['title'][0])
+            video_title = video_info['title'][0]
         else:
             self._downloader.report_warning(u'Unable to extract video title')
             video_title = u'_'
@@ -1418,7 +1423,7 @@ class YoutubePlaylistIE(YoutubeBaseInfoExtractor):
                 self.to_screen(u'Downloading just video %s because of --no-playlist' % video_id)
                 return self.url_result(video_id, 'Youtube', video_id=video_id)
             else:
-                self.to_screen(u'Downloading playlist PL%s - add --no-playlist to just download video %s' % (playlist_id, video_id))
+                self.to_screen(u'Downloading playlist %s - add --no-playlist to just download video %s' % (playlist_id, video_id))
 
         if playlist_id.startswith('RD'):
             # Mixes require a custom extraction process

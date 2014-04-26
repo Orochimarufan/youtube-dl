@@ -20,6 +20,7 @@ from .auengine import AUEngineIE
 from .bambuser import BambuserIE, BambuserChannelIE
 from .bandcamp import BandcampIE, BandcampAlbumIE
 from .bbccouk import BBCCoUkIE
+from .bilibili import BiliBiliIE
 from .blinkx import BlinkxIE
 from .bliptv import BlipTVIE, BlipTVUserIE
 from .bloomberg import BloombergIE
@@ -40,6 +41,7 @@ from .cinemassacre import CinemassacreIE
 from .clipfish import ClipfishIE
 from .cliphunter import CliphunterIE
 from .clipsyndicate import ClipsyndicateIE
+from .clubic import ClubicIE
 from .cmt import CMTIE
 from .cnet import CNETIE
 from .cnn import (
@@ -181,10 +183,12 @@ from .nfb import NFBIE
 from .nhl import NHLIE, NHLVideocenterIE
 from .niconico import NiconicoIE
 from .ninegag import NineGagIE
+from .noco import NocoIE
 from .normalboots import NormalbootsIE
 from .novamov import NovaMovIE
 from .nowness import NownessIE
 from .nowvideo import NowVideoIE
+from .nrk import NRKIE
 from .ntv import NTVIE
 from .oe1 import OE1IE
 from .ooyala import OoyalaIE
@@ -208,6 +212,7 @@ from .rottentomatoes import RottenTomatoesIE
 from .roxwel import RoxwelIE
 from .rtlnow import RTLnowIE
 from .rts import RTSIE
+from .rtve import RTVEALaCartaIE
 from .rutube import (
     RutubeIE,
     RutubeChannelIE,
@@ -216,6 +221,7 @@ from .rutube import (
 )
 from .rutv import RUTVIE
 from .savefrom import SaveFromIE
+from .scivee import SciVeeIE
 from .servingsys import ServingSysIE
 from .sina import SinaIE
 from .slideshare import SlideshareIE
@@ -250,6 +256,7 @@ from .tf1 import TF1IE
 from .theplatform import ThePlatformIE
 from .thisav import ThisAVIE
 from .tinypic import TinyPicIE
+from .tlc import TlcIE, TlcDeIE
 from .toutv import TouTvIE
 from .toypics import ToypicsUserIE, ToypicsIE
 from .traileraddict import TrailerAddictIE
@@ -287,11 +294,13 @@ from .vimeo import (
     VimeoAlbumIE,
     VimeoGroupsIE,
     VimeoReviewIE,
+    VimeoWatchLaterIE,
 )
 from .vine import VineIE
 from .viki import VikiIE
 from .vk import VKIE
 from .vube import VubeIE
+from .vuclip import VuClipIE
 from .washingtonpost import WashingtonPostIE
 from .wat import WatIE
 from .wdr import (
