@@ -113,6 +113,7 @@ from .hotnewhiphop import HotNewHipHopIE
 from .howcast import HowcastIE
 from .huffpost import HuffPostIE
 from .hypem import HypemIE
+from .iconosquare import IconosquareIE
 from .ign import IGNIE, OneUPIE
 from .imdb import (
     ImdbIE,
@@ -160,6 +161,7 @@ from .mofosex import MofosexIE
 from .mooshare import MooshareIE
 from .morningstar import MorningstarIE
 from .motorsport import MotorsportIE
+from .moviezine import MoviezineIE
 from .movshare import MovShareIE
 from .mtv import (
     MTVIE,
@@ -179,6 +181,7 @@ from .nbc import (
 from .ndr import NDRIE
 from .ndtv import NDTVIE
 from .newgrounds import NewgroundsIE
+from .newstube import NewstubeIE
 from .nfb import NFBIE
 from .nhl import NHLIE, NHLVideocenterIE
 from .niconico import NiconicoIE
@@ -190,6 +193,7 @@ from .nowness import NownessIE
 from .nowvideo import NowVideoIE
 from .nrk import NRKIE
 from .ntv import NTVIE
+from .nytimes import NYTimesIE
 from .oe1 import OE1IE
 from .ooyala import OoyalaIE
 from .orf import ORFIE
@@ -210,6 +214,7 @@ from .ringtv import RingTVIE
 from .ro220 import Ro220IE
 from .rottentomatoes import RottenTomatoesIE
 from .roxwel import RoxwelIE
+from .rtbf import RTBFIE
 from .rtlnow import RTLnowIE
 from .rts import RTSIE
 from .rtve import RTVEALaCartaIE
@@ -232,7 +237,12 @@ from .smotri import (
     SmotriBroadcastIE,
 )
 from .sohu import SohuIE
-from .soundcloud import SoundcloudIE, SoundcloudSetIE, SoundcloudUserIE
+from .soundcloud import (
+    SoundcloudIE,
+    SoundcloudSetIE,
+    SoundcloudUserIE,
+    SoundcloudPlaylistIE
+)
 from .southparkstudios import (
     SouthParkStudiosIE,
     SouthparkDeIE,
@@ -242,7 +252,6 @@ from .spankwire import SpankwireIE
 from .spiegel import SpiegelIE
 from .spike import SpikeIE
 from .stanfordoc import StanfordOpenClassroomIE
-from .statigram import StatigramIE
 from .steam import SteamIE
 from .streamcloud import StreamcloudIE
 from .streamcz import StreamCZIE
