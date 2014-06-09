@@ -23,10 +23,12 @@ from youtube_dl.extractor import (
     VimeoUserIE,
     VimeoAlbumIE,
     VimeoGroupsIE,
+    VineUserIE,
     UstreamChannelIE,
     SoundcloudSetIE,
     SoundcloudUserIE,
     SoundcloudPlaylistIE,
+    TeacherTubeClassroomIE,
     LivestreamIE,
     NHLVideocenterIE,
     BambuserChannelIE,
@@ -101,6 +103,13 @@ class TestPlaylists(unittest.TestCase):
         self.assertIsPlaylist(result)
         self.assertEqual(result['title'], 'Rolex Awards for Enterprise')
         self.assertTrue(len(result['entries']) > 72)
+
+    def test_vine_user(self):
+        dl = FakeYDL()
+        ie = VineUserIE(dl)
+        result = ie.extract('https://vine.co/Visa')
+        self.assertIsPlaylist(result)
+        self.assertTrue(len(result['entries']) >= 50)
 
     def test_ustream_channel(self):
         dl = FakeYDL()
@@ -201,20 +210,20 @@ class TestPlaylists(unittest.TestCase):
     def test_ivi_compilation(self):
         dl = FakeYDL()
         ie = IviCompilationIE(dl)
-        result = ie.extract('http://www.ivi.ru/watch/dezhurnyi_angel')
+        result = ie.extract('http://www.ivi.ru/watch/dvoe_iz_lartsa')
         self.assertIsPlaylist(result)
-        self.assertEqual(result['id'], 'dezhurnyi_angel')
-        self.assertEqual(result['title'], 'Дежурный ангел (2010 - 2012)')
-        self.assertTrue(len(result['entries']) >= 23)
+        self.assertEqual(result['id'], 'dvoe_iz_lartsa')
+        self.assertEqual(result['title'], 'Двое из ларца (2006 - 2008)')
+        self.assertTrue(len(result['entries']) >= 24)
 
     def test_ivi_compilation_season(self):
         dl = FakeYDL()
         ie = IviCompilationIE(dl)
-        result = ie.extract('http://www.ivi.ru/watch/dezhurnyi_angel/season2')
+        result = ie.extract('http://www.ivi.ru/watch/dvoe_iz_lartsa/season1')
         self.assertIsPlaylist(result)
-        self.assertEqual(result['id'], 'dezhurnyi_angel/season2')
-        self.assertEqual(result['title'], 'Дежурный ангел (2010 - 2012) 2 сезон')
-        self.assertTrue(len(result['entries']) >= 7)
+        self.assertEqual(result['id'], 'dvoe_iz_lartsa/season1')
+        self.assertEqual(result['title'], 'Двое из ларца (2006 - 2008) 1 сезон')
+        self.assertTrue(len(result['entries']) >= 12)
         
     def test_imdb_list(self):
         dl = FakeYDL()
@@ -351,6 +360,14 @@ class TestPlaylists(unittest.TestCase):
         self.assertEqual(
             result['title'], 'Brace Yourself - Today\'s Weirdest News')
         self.assertTrue(len(result['entries']) >= 10)
+
+    def test_TeacherTubeClassroom(self):
+        dl = FakeYDL()
+        ie = TeacherTubeClassroomIE(dl)
+        result = ie.extract('http://www.teachertube.com/view_classroom.php?user=rbhagwati2')
+        self.assertIsPlaylist(result)
+        self.assertEqual(result['id'], 'rbhagwati2')
+        self.assertTrue(len(result['entries']) >= 20)
 
 if __name__ == '__main__':
     unittest.main()

@@ -363,8 +363,13 @@ class GenericIE(InfoExtractor):
                     return self.url_result('http://' + url)
                 else:
                     if default_search == 'auto_warning':
-                        self._downloader.report_warning(
-                            'Falling back to youtube search for  %s . Set --default-search to "auto" to suppress this warning.' % url)
+                        if re.match(r'^(?:url|URL)$', url):
+                            raise ExtractorError(
+                                'Invalid URL:  %r . Call youtube-dl like this:  youtube-dl -v "https://www.youtube.com/watch?v=BaW_jenozKc"  ' % url,
+                                expected=True)
+                        else:
+                            self._downloader.report_warning(
+                                'Falling back to youtube search for  %s . Set --default-search to "auto" to suppress this warning.' % url)
                     return self.url_result('ytsearch:' + url)
             else:
                 assert ':' in default_search
@@ -560,7 +565,7 @@ class GenericIE(InfoExtractor):
 
         # Look for embedded NovaMov-based player
         mobj = re.search(
-            r'''(?x)<iframe[^>]+?src=(["\'])
+            r'''(?x)<(?:pagespeed_)?iframe[^>]+?src=(["\'])
                     (?P<url>http://(?:(?:embed|www)\.)?
                         (?:novamov\.com|
                            nowvideo\.(?:ch|sx|eu|at|ag|co)|
@@ -672,7 +677,7 @@ class GenericIE(InfoExtractor):
             # HTML5 video
             found = re.findall(r'(?s)<video[^<]*(?:>.*?<source.*?)? src="([^"]+)"', webpage)
         if not found:
-            found = re.findall(
+            found = re.search(
                 r'(?i)<meta\s+(?=(?:[a-z-]+="[^"]+"\s+)*http-equiv="refresh")'
                 r'(?:[a-z-]+="[^"]+"\s+)*?content="[0-9]{,2};url=\'([^\']+)\'"',
                 webpage)

@@ -92,8 +92,12 @@ class InfoExtractor(object):
                     unique, but available before title. Typically, id is
                     something like "4234987", title "Dancing naked mole rats",
                     and display_id "dancing-naked-mole-rats"
-    thumbnails:     A list of dictionaries (with the entries "resolution" and
-                    "url") for the varying thumbnails
+    thumbnails:     A list of dictionaries, with the following entries:
+                        * "url"
+                        * "width" (optional, int)
+                        * "height" (optional, int)
+                        * "resolution" (optional, string "{width}x{height"},
+                                        deprecated)
     thumbnail:      Full URL to a video thumbnail image.
     description:    One-line video description.
     uploader:       Full name of the video uploader.
@@ -113,6 +117,8 @@ class InfoExtractor(object):
     webpage_url:    The url to the video webpage, if given to youtube-dl it
                     should allow to get the same result again. (It will be set
                     by YoutubeDL if it's missing)
+    categories:     A list of categories that the video falls in, for example
+                    ["Sports", "Berlin"]
 
     Unless mentioned otherwise, the fields should be Unicode strings.
 
@@ -242,10 +248,11 @@ class InfoExtractor(object):
                 url = url_or_request.get_full_url()
             except AttributeError:
                 url = url_or_request
-            if len(url) > 200:
-                h = u'___' + hashlib.md5(url.encode('utf-8')).hexdigest()
-                url = url[:200 - len(h)] + h
-            raw_filename = ('%s_%s.dump' % (video_id, url))
+            basen = '%s_%s' % (video_id, url)
+            if len(basen) > 240:
+                h = u'___' + hashlib.md5(basen.encode('utf-8')).hexdigest()
+                basen = basen[:240 - len(h)] + h
+            raw_filename = basen + '.dump'
             filename = sanitize_filename(raw_filename, restricted=True)
             self.to_screen(u'Saving request to ' + filename)
             with open(filename, 'wb') as outf:
@@ -554,6 +561,16 @@ class InfoExtractor(object):
             'http:'
             if self._downloader.params.get('prefer_insecure', False)
             else 'https:')
+
+    def _proto_relative_url(self, url, scheme=None):
+        if url is None:
+            return url
+        if url.startswith('//'):
+            if scheme is None:
+                scheme = self.http_scheme()
+            return scheme + url
+        else:
+            return url
 
 
 class SearchInfoExtractor(InfoExtractor):

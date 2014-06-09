@@ -6,6 +6,7 @@ from .common import PostProcessor
 from ..utils import (
     check_executable,
     hyphenate_date,
+    subprocess_check_output
 )
 
 # Preemtively check FS support
@@ -102,7 +103,7 @@ class XAttrMetadataPP(PostProcessor):
                         elif user_has_xattr:
                             cmd = ['xattr', '-w', key, value, path]
 
-                        subprocess.check_output(cmd)
+                        subprocess_check_output(cmd)
 
                 else:
                     # On Unix, and can't find pyxattr, setfattr, or xattr.
