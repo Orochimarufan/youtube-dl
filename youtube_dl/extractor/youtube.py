@@ -223,6 +223,8 @@ class YoutubeIE(YoutubeBaseInfoExtractor, SubtitlesInfoExtractor):
         '246': {'ext': 'webm', 'height': 480, 'format_note': 'DASH video', 'acodec': 'none', 'preference': -40},
         '247': {'ext': 'webm', 'height': 720, 'format_note': 'DASH video', 'acodec': 'none', 'preference': -40},
         '248': {'ext': 'webm', 'height': 1080, 'format_note': 'DASH video', 'acodec': 'none', 'preference': -40},
+        '271': {'ext': 'webm', 'height': 1440, 'format_note': 'DASH video', 'acodec': 'none', 'preference': -40},
+        '272': {'ext': 'webm', 'height': 2160, 'format_note': 'DASH video', 'acodec': 'none', 'preference': -40},
 
         # Dash webm audio
         '171': {'ext': 'webm', 'vcodec': 'none', 'format_note': 'DASH audio', 'abr': 48, 'preference': -50},
@@ -242,7 +244,8 @@ class YoutubeIE(YoutubeBaseInfoExtractor, SubtitlesInfoExtractor):
                 u"uploader": u"Philipp Hagemeister",
                 u"uploader_id": u"phihag",
                 u"upload_date": u"20121002",
-                u"description": u"test chars:  \"'/\\ä↭𝕐\ntest URL: https://github.com/rg3/youtube-dl/issues/1892\n\nThis is a test video for youtube-dl.\n\nFor more information, contact phihag@phihag.de ."
+                u"description": u"test chars:  \"'/\\ä↭𝕐\ntest URL: https://github.com/rg3/youtube-dl/issues/1892\n\nThis is a test video for youtube-dl.\n\nFor more information, contact phihag@phihag.de .",
+                u"categories": [u'Science & Technology'],
             }
         },
         {
@@ -438,7 +441,7 @@ class YoutubeIE(YoutubeBaseInfoExtractor, SubtitlesInfoExtractor):
 
     def _parse_sig_js(self, jscode):
         funcname = self._search_regex(
-            r'signature=([a-zA-Z]+)', jscode,
+            r'signature=([$a-zA-Z]+)', jscode,
              u'Initial JS player signature function name')
 
         jsi = JSInterpreter(jscode)
@@ -1136,10 +1139,23 @@ class YoutubeIE(YoutubeBaseInfoExtractor, SubtitlesInfoExtractor):
 
         # upload date
         upload_date = None
-        mobj = re.search(r'id="eow-date.*?>(.*?)</span>', video_webpage, re.DOTALL)
+        mobj = re.search(r'(?s)id="eow-date.*?>(.*?)</span>', video_webpage)
+        if mobj is None:
+            mobj = re.search(
+                r'(?s)id="watch-uploader-info".*?>.*?(?:Published|Uploaded|Streamed live) on (.*?)</strong>',
+                video_webpage)
         if mobj is not None:
             upload_date = ' '.join(re.sub(r'[/,-]', r' ', mobj.group(1)).split())
             upload_date = unified_strdate(upload_date)
+
+        m_cat_container = get_element_by_id("eow-category", video_webpage)
+        if m_cat_container:
+            category = self._html_search_regex(
+                r'(?s)<a[^<]+>(.*?)</a>', m_cat_container, 'category',
+                default=None)
+            video_categories = None if category is None else [category]
+        else:
+            video_categories = None
 
         # description
         video_description = get_element_by_id("eow-description", video_webpage)
@@ -1347,6 +1363,7 @@ class YoutubeIE(YoutubeBaseInfoExtractor, SubtitlesInfoExtractor):
             'title':        video_title,
             'thumbnail':    video_thumbnail,
             'description':  video_description,
+            'categories':   video_categories,
             'subtitles':    video_subtitles,
             'duration':     video_duration,
             'age_limit':    18 if age_gate else 0,
@@ -1370,13 +1387,13 @@ class YoutubePlaylistIE(YoutubeBaseInfoExtractor):
                         |  p/
                         )
                         (
-                            (?:PL|EC|UU|FL|RD)?[0-9A-Za-z-_]{10,}
+                            (?:PL|LL|EC|UU|FL|RD)?[0-9A-Za-z-_]{10,}
                             # Top tracks, they can also include dots 
                             |(?:MC)[\w\.]*
                         )
                         .*
                      |
-                        ((?:PL|EC|UU|FL|RD)[0-9A-Za-z-_]{10,})
+                        ((?:PL|LL|EC|UU|FL|RD)[0-9A-Za-z-_]{10,})
                      )"""
     _TEMPLATE_URL = 'https://www.youtube.com/playlist?list=%s'
     _MORE_PAGES_INDICATOR = r'data-link-type="next"'
@@ -1399,11 +1416,9 @@ class YoutubePlaylistIE(YoutubeBaseInfoExtractor):
         title_span = (search_title('playlist-title') or
             search_title('title long-title') or search_title('title'))
         title = clean_html(title_span)
-        video_re = r'''(?x)data-video-username="(.*?)".*?
+        video_re = r'''(?x)data-video-username=".*?".*?
                        href="/watch\?v=([0-9A-Za-z_-]{11})&amp;[^"]*?list=%s''' % re.escape(playlist_id)
-        matches = orderedSet(re.findall(video_re, webpage, flags=re.DOTALL))
-        # Some of the videos may have been deleted, their username field is empty
-        ids = [video_id for (username, video_id) in matches if username]
+        ids = orderedSet(re.findall(video_re, webpage, flags=re.DOTALL))
         url_results = self._ids_to_results(ids)
 
         return self.playlist_result(url_results, playlist_id, title)
@@ -1437,7 +1452,7 @@ class YoutubePlaylistIE(YoutubeBaseInfoExtractor):
         more_widget_html = content_html = page
 
         # Check if the playlist exists or is private
-        if re.search(r'<div class="yt-alert-message">[^<]*?The playlist does not exist[^<]*?</div>', page) is not None:
+        if re.search(r'<div class="yt-alert-message">[^<]*?(The|This) playlist (does not exist|is private)[^<]*?</div>', page) is not None:
             raise ExtractorError(
                 u'The playlist doesn\'t exist or is private, use --username or '
                 '--netrc to access it.',
@@ -1760,9 +1775,12 @@ class YoutubeFeedsInfoExtractor(YoutubeBaseInfoExtractor):
             feed_entries.extend(
                 self.url_result(video_id, 'Youtube', video_id=video_id)
                 for video_id in ids)
-            if info['paging'] is None:
+            mobj = re.search(
+                r'data-uix-load-more-href="/?[^"]+paging=(?P<paging>\d+)',
+                feed_html)
+            if mobj is None:
                 break
-            paging = info['paging']
+            paging = mobj.group('paging')
         return self.playlist_result(feed_entries, playlist_title=self._PLAYLIST_TITLE)
 
 class YoutubeSubscriptionsIE(YoutubeFeedsInfoExtractor):
