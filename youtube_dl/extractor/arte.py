@@ -78,18 +78,23 @@ class ArteTVPlus7IE(InfoExtractor):
 
     def _extract_from_webpage(self, webpage, video_id, lang):
         json_url = self._html_search_regex(
-            r'arte_vp_url="(.*?)"', webpage, 'json vp url')
+            [r'arte_vp_url=["\'](.*?)["\']', r'data-url=["\']([^"]+)["\']'],
+            webpage, 'json vp url')
         return self._extract_from_json_url(json_url, video_id, lang)
 
     def _extract_from_json_url(self, json_url, video_id, lang):
         info = self._download_json(json_url, video_id)
         player_info = info['videoJsonPlayer']
 
+        upload_date_str = player_info.get('shootingDate')
+        if not upload_date_str:
+            upload_date_str = player_info.get('VDA', '').split(' ')[0]
+
         info_dict = {
             'id': player_info['VID'],
             'title': player_info['VTI'],
             'description': player_info.get('VDE'),
-            'upload_date': unified_strdate(player_info.get('VDA', '').split(' ')[0]),
+            'upload_date': unified_strdate(upload_date_str),
             'thumbnail': player_info.get('programImage') or player_info.get('VTU', {}).get('IUR'),
         }
 
@@ -177,16 +182,26 @@ class ArteTVPlus7IE(InfoExtractor):
 # It also uses the arte_vp_url url from the webpage to extract the information
 class ArteTVCreativeIE(ArteTVPlus7IE):
     IE_NAME = 'arte.tv:creative'
-    _VALID_URL = r'https?://creative\.arte\.tv/(?P<lang>fr|de)/magazine?/(?P<id>.+)'
+    _VALID_URL = r'https?://creative\.arte\.tv/(?P<lang>fr|de)/(?:magazine?/)?(?P<id>[^?#]+)'
 
-    _TEST = {
+    _TESTS = [{
         'url': 'http://creative.arte.tv/de/magazin/agentur-amateur-corporate-design',
         'info_dict': {
-            'id': '050489-002',
+            'id': '72176',
             'ext': 'mp4',
-            'title': 'Agentur Amateur / Agence Amateur #2 : Corporate Design',
+            'title': 'Folge 2 - Corporate Design',
+            'upload_date': '20131004',
         },
-    }
+    }, {
+        'url': 'http://creative.arte.tv/fr/Monty-Python-Reunion',
+        'info_dict': {
+            'id': '160676',
+            'ext': 'mp4',
+            'title': 'Monty Python live (mostly)',
+            'description': 'Événement ! Quarante-cinq ans après leurs premiers succès, les légendaires Monty Python remontent sur scène.\n',
+            'upload_date': '20140805',
+        }
+    }]
 
 
 class ArteTVFutureIE(ArteTVPlus7IE):
