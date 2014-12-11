@@ -32,7 +32,7 @@ class SoundcloudIE(InfoExtractor):
                             (?P<title>[\w\d-]+)/?
                             (?P<token>[^?]+?)?(?:[?].*)?$)
                        |(?:api\.soundcloud\.com/tracks/(?P<track_id>\d+)
-                          (?:/?\?secret_token=(?P<secret_token>[^&]+?))?$)
+                          (?:/?\?secret_token=(?P<secret_token>[^&]+))?)
                        |(?P<player>(?:w|player|p.)\.soundcloud\.com/player/?.*?url=.*)
                     )
                     '''
@@ -40,14 +40,15 @@ class SoundcloudIE(InfoExtractor):
     _TESTS = [
         {
             'url': 'http://soundcloud.com/ethmusic/lostin-powers-she-so-heavy',
-            'file': '62986583.mp3',
             'md5': 'ebef0a451b909710ed1d7787dddbf0d7',
             'info_dict': {
-                "upload_date": "20121011",
-                "description": "No Downloads untill we record the finished version this weekend, i was too pumped n i had to post it , earl is prolly gonna b hella p.o'd",
-                "uploader": "E.T. ExTerrestrial Music",
-                "title": "Lostin Powers - She so Heavy (SneakPreview) Adrian Ackers Blueprint 1",
-                "duration": 143,
+                'id': '62986583',
+                'ext': 'mp3',
+                'upload_date': '20121011',
+                'description': 'No Downloads untill we record the finished version this weekend, i was too pumped n i had to post it , earl is prolly gonna b hella p.o\'d',
+                'uploader': 'E.T. ExTerrestrial Music',
+                'title': 'Lostin Powers - She so Heavy (SneakPreview) Adrian Ackers Blueprint 1',
+                'duration': 143,
             }
         },
         # not streamable song
@@ -103,7 +104,7 @@ class SoundcloudIE(InfoExtractor):
                 'id': '128590877',
                 'ext': 'mp3',
                 'title': 'Bus Brakes',
-                'description': 'md5:0170be75dd395c96025d210d261c784e',
+                'description': 'md5:0053ca6396e8d2fd7b7e1595ef12ab66',
                 'uploader': 'oddsamples',
                 'upload_date': '20140109',
                 'duration': 17,
@@ -140,6 +141,7 @@ class SoundcloudIE(InfoExtractor):
             'description': info['description'],
             'thumbnail': thumbnail,
             'duration': int_or_none(info.get('duration'), 1000),
+            'webpage_url': info.get('permalink_url'),
         }
         formats = []
         if info.get('downloadable', False):
@@ -157,7 +159,7 @@ class SoundcloudIE(InfoExtractor):
 
         # We have to retrieve the url
         streams_url = ('http://api.soundcloud.com/i1/tracks/{0}/streams?'
-            'client_id={1}&secret_token={2}'.format(track_id, self._IPHONE_CLIENT_ID, secret_token))
+                       'client_id={1}&secret_token={2}'.format(track_id, self._IPHONE_CLIENT_ID, secret_token))
         format_dict = self._download_json(
             streams_url,
             track_id, 'Downloading track url')
@@ -222,14 +224,14 @@ class SoundcloudIE(InfoExtractor):
             # extract uploader (which is in the url)
             uploader = mobj.group('uploader')
             # extract simple title (uploader + slug of song title)
-            slug_title =  mobj.group('title')
+            slug_title = mobj.group('title')
             token = mobj.group('token')
             full_title = resolve_title = '%s/%s' % (uploader, slug_title)
             if token:
                 resolve_title += '/%s' % token
-    
+
             self.report_resolve(full_title)
-    
+
             url = 'http://soundcloud.com/%s' % resolve_title
             info_json_url = self._resolv_url(url)
         info = self._download_json(info_json_url, full_title, 'Downloading info JSON')
@@ -369,7 +371,7 @@ class SoundcloudPlaylistIE(SoundcloudIE):
 
         entries = [
             self._extract_info_dict(t, quiet=True, secret_token=token)
-                for t in data['tracks']]
+            for t in data['tracks']]
 
         return {
             '_type': 'playlist',

@@ -5,6 +5,11 @@ import optparse
 import shlex
 import sys
 
+from .compat import (
+    compat_expanduser,
+    compat_getenv,
+    compat_kwargs,
+)
 from .utils import (
     get_term_width,
     write_string,
@@ -27,19 +32,19 @@ def parseOpts(overrideArguments=None):
         return res
 
     def _readUserConf():
-        xdg_config_home = os.environ.get('XDG_CONFIG_HOME')
+        xdg_config_home = compat_getenv('XDG_CONFIG_HOME')
         if xdg_config_home:
             userConfFile = os.path.join(xdg_config_home, 'youtube-dl', 'config')
             if not os.path.isfile(userConfFile):
                 userConfFile = os.path.join(xdg_config_home, 'youtube-dl.conf')
         else:
-            userConfFile = os.path.join(os.path.expanduser('~'), '.config', 'youtube-dl', 'config')
+            userConfFile = os.path.join(compat_expanduser('~'), '.config', 'youtube-dl', 'config')
             if not os.path.isfile(userConfFile):
-                userConfFile = os.path.join(os.path.expanduser('~'), '.config', 'youtube-dl.conf')
+                userConfFile = os.path.join(compat_expanduser('~'), '.config', 'youtube-dl.conf')
         userConf = _readOptions(userConfFile, None)
 
         if userConf is None:
-            appdata_dir = os.environ.get('appdata')
+            appdata_dir = compat_getenv('appdata')
             if appdata_dir:
                 userConf = _readOptions(
                     os.path.join(appdata_dir, 'youtube-dl', 'config'),
@@ -51,11 +56,11 @@ def parseOpts(overrideArguments=None):
 
         if userConf is None:
             userConf = _readOptions(
-                os.path.join(os.path.expanduser('~'), 'youtube-dl.conf'),
+                os.path.join(compat_expanduser('~'), 'youtube-dl.conf'),
                 default=None)
         if userConf is None:
             userConf = _readOptions(
-                os.path.join(os.path.expanduser('~'), 'youtube-dl.conf.txt'),
+                os.path.join(compat_expanduser('~'), 'youtube-dl.conf.txt'),
                 default=None)
 
         if userConf is None:
@@ -108,7 +113,7 @@ def parseOpts(overrideArguments=None):
         'conflict_handler': 'resolve',
     }
 
-    parser = optparse.OptionParser(**kw)
+    parser = optparse.OptionParser(**compat_kwargs(kw))
 
     general = optparse.OptionGroup(parser, 'General Options')
     general.add_option(
@@ -158,7 +163,15 @@ def parseOpts(overrideArguments=None):
     general.add_option(
         '--ignore-config',
         action='store_true',
-        help='Do not read configuration files. When given in the global configuration file /etc/youtube-dl.conf: do not read the user configuration in ~/.config/youtube-dl.conf (%APPDATA%/youtube-dl/config.txt on Windows)')
+        help='Do not read configuration files. '
+        'When given in the global configuration file /etc/youtube-dl.conf: '
+        'Do not read the user configuration in ~/.config/youtube-dl/config '
+        '(%APPDATA%/youtube-dl/config.txt on Windows)')
+    general.add_option(
+        '--flat-playlist',
+        action='store_const', dest='extract_flat', const='in_playlist',
+        default=False,
+        help='Do not extract the videos of a playlist, only list them.')
 
     selection = optparse.OptionGroup(parser, 'Video Selection')
     selection.add_option(
@@ -212,7 +225,7 @@ def parseOpts(overrideArguments=None):
     selection.add_option(
         '--no-playlist',
         action='store_true', dest='noplaylist', default=False,
-        help='download only the currently playing video')
+        help='If the URL refers to a video and a playlist, download only the video.')
     selection.add_option(
         '--age-limit',
         metavar='YEARS', dest='age_limit', default=None, type=int,
@@ -252,7 +265,17 @@ def parseOpts(overrideArguments=None):
     video_format.add_option(
         '-f', '--format',
         action='store', dest='format', metavar='FORMAT', default=None,
-        help='video format code, specify the order of preference using slashes: -f 22/17/18 .  -f mp4 , -f m4a and  -f flv  are also supported. You can also use the special names "best", "bestvideo", "bestaudio", "worst", "worstvideo" and "worstaudio". By default, youtube-dl will pick the best quality. Use commas to download multiple audio formats, such as  -f  136/137/mp4/bestvideo,140/m4a/bestaudio')
+        help=(
+            'video format code, specify the order of preference using'
+            ' slashes: -f 22/17/18 .  -f mp4 , -f m4a and  -f flv  are also'
+            ' supported. You can also use the special names "best",'
+            ' "bestvideo", "bestaudio", "worst", "worstvideo" and'
+            ' "worstaudio". By default, youtube-dl will pick the best quality.'
+            ' Use commas to download multiple audio formats, such as'
+            ' -f  136/137/mp4/bestvideo,140/m4a/bestaudio.'
+            ' You can merge the video and audio of two formats into a single'
+            ' file using -f <video-format>+<audio-format> (requires ffmpeg or'
+            ' avconv), for example -f bestvideo+bestaudio.'))
     video_format.add_option(
         '--all-formats',
         action='store_const', dest='format', const='all',
@@ -413,6 +436,10 @@ def parseOpts(overrideArguments=None):
         action='store_true', dest='dumpjson', default=False,
         help='simulate, quiet but print JSON information. See --output for a description of available keys.')
     verbosity.add_option(
+        '-J', '--dump-single-json',
+        action='store_true', dest='dump_single_json', default=False,
+        help='simulate, quiet but print JSON information for each command-line argument. If the URL refers to a playlist, dump the whole playlist information in a single line.')
+    verbosity.add_option(
         '--newline',
         action='store_true', dest='progress_with_newline', default=False,
         help='output progress bar as new lines')
@@ -468,10 +495,12 @@ def parseOpts(overrideArguments=None):
               '%(format_id)s for the unique id of the format (like Youtube\'s itags: "137"), '
               '%(upload_date)s for the upload date (YYYYMMDD), '
               '%(extractor)s for the provider (youtube, metacafe, etc), '
-              '%(id)s for the video id, %(playlist)s for the playlist the video is in, '
-              '%(playlist_index)s for the position in the playlist and %% for a literal percent. '
+              '%(id)s for the video id, '
+              '%(playlist_title)s, %(playlist_id)s, or %(playlist)s (=title if present, ID otherwise) for the playlist the video is in, '
+              '%(playlist_index)s for the position in the playlist. '
               '%(height)s and %(width)s for the width and height of the video format. '
               '%(resolution)s for a textual description of the resolution of the video format. '
+              '%% for a literal percent. '
               'Use - to output to stdout. Can also be used to download to a different directory, '
               'for example with -o \'/my/downloads/%(uploader)s/%(title)s-%(id)s.%(ext)s\' .'))
     filesystem.add_option(
@@ -598,7 +627,7 @@ def parseOpts(overrideArguments=None):
     postproc.add_option(
         '--exec',
         metavar='CMD', dest='exec_cmd',
-        help='Execute a command on the file after downloading, similar to find\'s -exec syntax. Example: --exec \'adb push {} /sdcard/Music/ && rm {}\'' )
+        help='Execute a command on the file after downloading, similar to find\'s -exec syntax. Example: --exec \'adb push {} /sdcard/Music/ && rm {}\'')
 
     parser.add_option_group(general)
     parser.add_option_group(selection)

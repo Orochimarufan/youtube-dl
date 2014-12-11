@@ -65,10 +65,12 @@ which means you can modify it, redistribute it or use it however you like.
                                      this is not possible instead of searching.
     --ignore-config                  Do not read configuration files. When given
                                      in the global configuration file /etc
-                                     /youtube-dl.conf: do not read the user
-                                     configuration in ~/.config/youtube-dl.conf
-                                     (%APPDATA%/youtube-dl/config.txt on
-                                     Windows)
+                                     /youtube-dl.conf: Do not read the user
+                                     configuration in ~/.config/youtube-
+                                     dl/config (%APPDATA%/youtube-dl/config.txt
+                                     on Windows)
+    --flat-playlist                  Do not extract the videos of a playlist,
+                                     only list them.
 
 ## Video Selection:
     --playlist-start NUMBER          playlist video to start at (default is 1)
@@ -91,7 +93,8 @@ which means you can modify it, redistribute it or use it however you like.
                                      COUNT views
     --max-views COUNT                Do not download any videos with more than
                                      COUNT views
-    --no-playlist                    download only the currently playing video
+    --no-playlist                    If the URL refers to a video and a
+                                     playlist, download only the video.
     --age-limit YEARS                download only videos suitable for the given
                                      age
     --download-archive FILE          Download only videos not listed in the
@@ -129,17 +132,19 @@ which means you can modify it, redistribute it or use it however you like.
                                      %(upload_date)s for the upload date
                                      (YYYYMMDD), %(extractor)s for the provider
                                      (youtube, metacafe, etc), %(id)s for the
-                                     video id, %(playlist)s for the playlist the
+                                     video id, %(playlist_title)s,
+                                     %(playlist_id)s, or %(playlist)s (=title if
+                                     present, ID otherwise) for the playlist the
                                      video is in, %(playlist_index)s for the
-                                     position in the playlist and %% for a
-                                     literal percent. %(height)s and %(width)s
-                                     for the width and height of the video
-                                     format. %(resolution)s for a textual
+                                     position in the playlist. %(height)s and
+                                     %(width)s for the width and height of the
+                                     video format. %(resolution)s for a textual
                                      description of the resolution of the video
-                                     format. Use - to output to stdout. Can also
-                                     be used to download to a different
-                                     directory, for example with -o '/my/downloa
-                                     ds/%(uploader)s/%(title)s-%(id)s.%(ext)s' .
+                                     format. %% for a literal percent. Use - to
+                                     output to stdout. Can also be used to
+                                     download to a different directory, for
+                                     example with -o '/my/downloads/%(uploader)s
+                                     /%(title)s-%(id)s.%(ext)s' .
     --autonumber-size NUMBER         Specifies the number of digits in
                                      %(autonumber)s when it is present in output
                                      filename template or --auto-number option
@@ -197,6 +202,10 @@ which means you can modify it, redistribute it or use it however you like.
     -j, --dump-json                  simulate, quiet but print JSON information.
                                      See --output for a description of available
                                      keys.
+    -J, --dump-single-json           simulate, quiet but print JSON information
+                                     for each command-line argument. If the URL
+                                     refers to a playlist, dump the whole
+                                     playlist information in a single line.
     --newline                        output progress bar as new lines
     --no-progress                    do not print progress bar
     --console-title                  display progress in console titlebar
@@ -233,8 +242,13 @@ which means you can modify it, redistribute it or use it however you like.
                                      "worst", "worstvideo" and "worstaudio". By
                                      default, youtube-dl will pick the best
                                      quality. Use commas to download multiple
-                                     audio formats, such as  -f
-                                     136/137/mp4/bestvideo,140/m4a/bestaudio
+                                     audio formats, such as -f
+                                     136/137/mp4/bestvideo,140/m4a/bestaudio.
+                                     You can merge the video and audio of two
+                                     formats into a single file using -f <video-
+                                     format>+<audio-format> (requires ffmpeg or
+                                     avconv), for example -f
+                                     bestvideo+bestaudio.
     --all-formats                    download all available video formats
     --prefer-free-formats            prefer free video formats unless a specific
                                      one is requested
@@ -375,7 +389,7 @@ Again, from then on you'll be able to update with `sudo youtube-dl -U`.
 
 YouTube changed their playlist format in March 2014 and later on, so you'll need at least youtube-dl 2014.07.25 to download all YouTube videos.
 
-If you have installed youtube-dl with a package manager, pip, setup.py or a tarball, please use that to update. Note that Ubuntu packages do not seem to get updated anymore. Since we are not affiliated with Ubuntu, there is little we can do. Feel free to report bugs to the Ubuntu packaging guys - all they have to do is update the package to a somewhat recent version. See above for a way to update.
+If you have installed youtube-dl with a package manager, pip, setup.py or a tarball, please use that to update. Note that Ubuntu packages do not seem to get updated anymore. Since we are not affiliated with Ubuntu, there is little we can do. Feel free to [report bugs](https://bugs.launchpad.net/ubuntu/+source/youtube-dl/+filebug) to the [Ubuntu packaging guys](mailto:ubuntu-motu@lists.ubuntu.com?subject=outdated%20version%20of%20youtube-dl) - all they have to do is update the package to a somewhat recent version. See above for a way to update.
 
 ### Do I always have to pass in `--max-quality FORMAT`, or `-citw`?
 
@@ -479,14 +493,15 @@ If you want to add support for a new site, you can follow this quick list (assum
 
         def _real_extract(self, url):
             video_id = self._match_id(url)
+            webpage = self._download_webpage(url, video_id)
 
             # TODO more code goes here, for example ...
-            webpage = self._download_webpage(url, video_id)
             title = self._html_search_regex(r'<h1>(.*?)</h1>', webpage, 'title')
 
             return {
                 'id': video_id,
                 'title': title,
+                'description': self._og_search_description(webpage),
                 # TODO more properties (see youtube_dl/extractor/common.py)
             }
     ```
@@ -494,7 +509,7 @@ If you want to add support for a new site, you can follow this quick list (assum
 6. Run `python test/test_download.py TestDownload.test_YourExtractor`. This *should fail* at first, but you can continually re-run it until you're done. If you decide to add more than one test, then rename ``_TEST`` to ``_TESTS`` and make it into a list of dictionaries. The tests will be then be named `TestDownload.test_YourExtractor`, `TestDownload.test_YourExtractor_1`, `TestDownload.test_YourExtractor_2`, etc.
 7. Have a look at [`youtube_dl/common/extractor/common.py`](https://github.com/rg3/youtube-dl/blob/master/youtube_dl/extractor/common.py) for possible helper methods and a [detailed description of what your extractor should return](https://github.com/rg3/youtube-dl/blob/master/youtube_dl/extractor/common.py#L38). Add tests and code for as many as you want.
 8. If you can, check the code with [pyflakes](https://pypi.python.org/pypi/pyflakes) (a good idea) and [pep8](https://pypi.python.org/pypi/pep8) (optional, ignore E501).
-9. When the tests pass, [add](https://www.kernel.org/pub/software/scm/git/docs/git-add.html) the new files and [commit](https://www.kernel.org/pub/software/scm/git/docs/git-commit.html) them and [push](https://www.kernel.org/pub/software/scm/git/docs/git-push.html) the result, like this:
+9. When the tests pass, [add](http://git-scm.com/docs/git-add) the new files and [commit](http://git-scm.com/docs/git-commit) them and [push](http://git-scm.com/docs/git-push) the result, like this:
 
         $ git add youtube_dl/extractor/__init__.py
         $ git add youtube_dl/extractor/yourextractor.py
@@ -504,6 +519,20 @@ If you want to add support for a new site, you can follow this quick list (assum
 10. Finally, [create a pull request](https://help.github.com/articles/creating-a-pull-request). We'll then review and merge it.
 
 In any case, thank you very much for your contributions!
+
+# EMBEDDING YOUTUBE-DL
+
+youtube-dl makes the best effort to be a good command-line program, and thus should be callable from any programming language. If you encounter any problems parsing its output, feel free to [create a report](https://github.com/rg3/youtube-dl/issues/new).
+
+From a Python program, you can embed youtube-dl in a more powerful fashion, like this:
+
+    import youtube_dl
+
+    ydl_opts = {}
+    with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+        ydl.download(['http://www.youtube.com/watch?v=BaW_jenozKc'])
+
+Most likely, you'll want to use various options. For a list of what can be done, have a look at [youtube_dl/YoutubeDL.py](https://github.com/rg3/youtube-dl/blob/master/youtube_dl/YoutubeDL.py#L69). For a start, if you want to intercept youtube-dl's output, set a `logger` object.
 
 # BUGS
 
