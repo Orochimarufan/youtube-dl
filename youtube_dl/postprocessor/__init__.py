@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 
+from .advancedav import AdvancedAVPP
 from .atomicparsley import AtomicParsleyPP
 from .ffmpeg import (
     FFmpegPostProcessor,
@@ -20,6 +21,7 @@ def get_postprocessor(key):
 
 
 __all__ = [
+    'AdvancedAVPP',
     'AtomicParsleyPP',
     'ExecAfterDownloadPP',
     'FFmpegAudioFixPP',

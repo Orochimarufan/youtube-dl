@@ -675,6 +675,10 @@ def parseOpts(overrideArguments=None):
         '--exec',
         metavar='CMD', dest='exec_cmd',
         help='Execute a command on the file after downloading, similar to find\'s -exec syntax. Example: --exec \'adb push {} /sdcard/Music/ && rm {}\'')
+    postproc.add_option(
+        '--use-aavpp',
+        action='store_true', dest='use_aavpp',
+        help='Use the AdvancedAV postprocessor in favor of the various ffmpeg flavors. (experimental, much faster)')
 
     parser.add_option_group(general)
     parser.add_option_group(network)

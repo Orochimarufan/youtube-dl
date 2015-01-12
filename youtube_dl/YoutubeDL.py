@@ -189,6 +189,9 @@ class YoutubeDL(object):
                                youtube_dl/postprocessor/__init__.py for a list.
                        as well as any further keyword arguments for the
                        postprocessor.
+    no_implicit_merge_pp: Don't implicitly add the FFmpegMergePP if files need
+                       to be merged. Another PP in postprocessors already
+                       handles merging, or no merging should take place
     progress_hooks:    A list of functions that get called on download
                        progress, with a dictionary with the entries
                        * filename: The final filename
@@ -1129,17 +1132,21 @@ class YoutubeDL(object):
                     if self.params.get('verbose'):
                         self.to_stdout('[debug] Invoking downloader on %r' % info.get('url'))
                     return fd.download(name, info)
+
                 if info_dict.get('requested_formats') is not None:
                     downloaded = []
                     success = True
-                    merger = FFmpegMergerPP(self, not self.params.get('keepvideo'))
-                    if not merger._executable:
-                        postprocessors = []
-                        self.report_warning('You have requested multiple '
-                                            'formats but ffmpeg or avconv are not installed.'
-                                            ' The formats won\'t be merged')
-                    else:
-                        postprocessors = [merger]
+                    postprocessors = None
+
+                    if not self.params.get('no_implicit_merge_pp'):
+                        merger = FFmpegMergerPP(self, not self.params.get('keepvideo'))
+                        if not merger._executable:
+                            self.report_warning('You have requested multiple '
+                                                'formats but ffmpeg or avconv are not installed.'
+                                                ' The formats won\'t be merged')
+                        else:
+                            postprocessors = [merger]
+
                     for f in info_dict['requested_formats']:
                         new_info = dict(info_dict)
                         new_info.update(f)
@@ -1148,11 +1155,15 @@ class YoutubeDL(object):
                         downloaded.append(fname)
                         partial_success = dl(fname, new_info)
                         success = success and partial_success
-                    info_dict['__postprocessors'] = postprocessors
+
                     info_dict['__files_to_merge'] = downloaded
+                    if postprocessors:
+                        info_dict['__postprocessors'] = postprocessors
+
                 else:
                     # Just a single file
                     success = dl(filename, info_dict)
+
             except (compat_urllib_error.URLError, compat_http_client.HTTPException, socket.error) as err:
                 self.report_error('unable to download video data: %s' % str(err))
                 return

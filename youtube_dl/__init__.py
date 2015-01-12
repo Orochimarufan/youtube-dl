@@ -204,26 +204,47 @@ def _real_main(argv=None):
 
     # PostProcessors
     postprocessors = []
-    # Add the metadata pp first, the other pps will copy it
-    if opts.addmetadata:
-        postprocessors.append({'key': 'FFmpegMetadata'})
-    if opts.extractaudio:
+
+    if opts.use_aavpp:
+        # Handles addmetadata, recodevideo, embedsubtitles, extractaudio
         postprocessors.append({
-            'key': 'FFmpegExtractAudio',
-            'preferredcodec': opts.audioformat,
-            'preferredquality': opts.audioquality,
-            'nopostoverwrites': opts.nopostoverwrites,
+            'key': 'AdvancedAV',
+            'options': {
+                # Options
+                "verbose": opts.verbose,
+                "keep_originals": opts.keepvideo,
+                "prefer_ffmpeg": opts.prefer_ffmpeg,
+                # Tasks
+                "add_metadata": opts.addmetadata,
+                "repack_container": opts.recodevideo,
+                "embed_subs": opts.embedsubtitles,
+                "extract_audio": opts.extractaudio,
+                # Audio Options
+                "audio_preferred_format": opts.audioformat,
+                "audio_preferred_quality": opts.audioquality,
+            },
         })
-    if opts.recodevideo:
-        postprocessors.append({
-            'key': 'FFmpegVideoConvertor',
-            'preferedformat': opts.recodevideo,
-        })
-    if opts.embedsubtitles:
-        postprocessors.append({
-            'key': 'FFmpegEmbedSubtitle',
-            'subtitlesformat': opts.subtitlesformat,
-        })
+    else:
+        # Add the metadata pp first, the other pps will copy it
+        if opts.addmetadata:
+            postprocessors.append({'key': 'FFmpegMetadata'})
+        if opts.extractaudio:
+            postprocessors.append({
+                'key': 'FFmpegExtractAudio',
+                'preferredcodec': opts.audioformat,
+                'preferredquality': opts.audioquality,
+                'nopostoverwrites': opts.nopostoverwrites,
+            })
+        if opts.recodevideo:
+            postprocessors.append({
+                'key': 'FFmpegVideoConvertor',
+                'preferedformat': opts.recodevideo,
+            })
+        if opts.embedsubtitles:
+            postprocessors.append({
+                'key': 'FFmpegEmbedSubtitle',
+                'subtitlesformat': opts.subtitlesformat,
+            })
     if opts.xattrs:
         postprocessors.append({'key': 'XAttrMetadata'})
     if opts.embedthumbnail:
@@ -329,6 +350,7 @@ def _real_main(argv=None):
         'fixup': opts.fixup,
         'source_address': opts.source_address,
         'call_home': opts.call_home,
+        'no_implicit_merge_pp': opts.use_aavpp,
     }
 
     with YoutubeDL(ydl_opts) as ydl:
