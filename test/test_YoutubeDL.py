@@ -13,6 +13,7 @@ import copy
 from test.helper import FakeYDL, assertRegexpMatches
 from youtube_dl import YoutubeDL
 from youtube_dl.extractor import YoutubeIE
+from youtube_dl.postprocessor.common import PostProcessor
 
 
 class YDL(FakeYDL):
@@ -281,6 +282,120 @@ class TestFormatSelection(unittest.TestCase):
             downloaded = ydl.downloaded_info_dicts[0]
             self.assertEqual(downloaded['format_id'], f1id)
 
+    def test_format_filtering(self):
+        formats = [
+            {'format_id': 'A', 'filesize': 500, 'width': 1000},
+            {'format_id': 'B', 'filesize': 1000, 'width': 500},
+            {'format_id': 'C', 'filesize': 1000, 'width': 400},
+            {'format_id': 'D', 'filesize': 2000, 'width': 600},
+            {'format_id': 'E', 'filesize': 3000},
+            {'format_id': 'F'},
+            {'format_id': 'G', 'filesize': 1000000},
+        ]
+        for f in formats:
+            f['url'] = 'http://_/'
+            f['ext'] = 'unknown'
+        info_dict = _make_result(formats)
+
+        ydl = YDL({'format': 'best[filesize<3000]'})
+        ydl.process_ie_result(info_dict)
+        downloaded = ydl.downloaded_info_dicts[0]
+        self.assertEqual(downloaded['format_id'], 'D')
+
+        ydl = YDL({'format': 'best[filesize<=3000]'})
+        ydl.process_ie_result(info_dict)
+        downloaded = ydl.downloaded_info_dicts[0]
+        self.assertEqual(downloaded['format_id'], 'E')
+
+        ydl = YDL({'format': 'best[filesize <= ? 3000]'})
+        ydl.process_ie_result(info_dict)
+        downloaded = ydl.downloaded_info_dicts[0]
+        self.assertEqual(downloaded['format_id'], 'F')
+
+        ydl = YDL({'format': 'best [filesize = 1000] [width>450]'})
+        ydl.process_ie_result(info_dict)
+        downloaded = ydl.downloaded_info_dicts[0]
+        self.assertEqual(downloaded['format_id'], 'B')
+
+        ydl = YDL({'format': 'best [filesize = 1000] [width!=450]'})
+        ydl.process_ie_result(info_dict)
+        downloaded = ydl.downloaded_info_dicts[0]
+        self.assertEqual(downloaded['format_id'], 'C')
+
+        ydl = YDL({'format': '[filesize>?1]'})
+        ydl.process_ie_result(info_dict)
+        downloaded = ydl.downloaded_info_dicts[0]
+        self.assertEqual(downloaded['format_id'], 'G')
+
+        ydl = YDL({'format': '[filesize<1M]'})
+        ydl.process_ie_result(info_dict)
+        downloaded = ydl.downloaded_info_dicts[0]
+        self.assertEqual(downloaded['format_id'], 'E')
+
+        ydl = YDL({'format': '[filesize<1MiB]'})
+        ydl.process_ie_result(info_dict)
+        downloaded = ydl.downloaded_info_dicts[0]
+        self.assertEqual(downloaded['format_id'], 'G')
+
+    def test_subtitles(self):
+        def s_formats(lang, autocaption=False):
+            return [{
+                'ext': ext,
+                'url': 'http://localhost/video.%s.%s' % (lang, ext),
+                '_auto': autocaption,
+            } for ext in ['vtt', 'srt', 'ass']]
+        subtitles = dict((l, s_formats(l)) for l in ['en', 'fr', 'es'])
+        auto_captions = dict((l, s_formats(l, True)) for l in ['it', 'pt', 'es'])
+        info_dict = {
+            'id': 'test',
+            'title': 'Test',
+            'url': 'http://localhost/video.mp4',
+            'subtitles': subtitles,
+            'automatic_captions': auto_captions,
+            'extractor': 'TEST',
+        }
+
+        def get_info(params={}):
+            params.setdefault('simulate', True)
+            ydl = YDL(params)
+            ydl.report_warning = lambda *args, **kargs: None
+            return ydl.process_video_result(info_dict, download=False)
+
+        result = get_info()
+        self.assertFalse(result.get('requested_subtitles'))
+        self.assertEqual(result['subtitles'], subtitles)
+        self.assertEqual(result['automatic_captions'], auto_captions)
+
+        result = get_info({'writesubtitles': True})
+        subs = result['requested_subtitles']
+        self.assertTrue(subs)
+        self.assertEqual(set(subs.keys()), set(['en']))
+        self.assertTrue(subs['en'].get('data') is None)
+        self.assertEqual(subs['en']['ext'], 'ass')
+
+        result = get_info({'writesubtitles': True, 'subtitlesformat': 'foo/srt'})
+        subs = result['requested_subtitles']
+        self.assertEqual(subs['en']['ext'], 'srt')
+
+        result = get_info({'writesubtitles': True, 'subtitleslangs': ['es', 'fr', 'it']})
+        subs = result['requested_subtitles']
+        self.assertTrue(subs)
+        self.assertEqual(set(subs.keys()), set(['es', 'fr']))
+
+        result = get_info({'writesubtitles': True, 'writeautomaticsub': True, 'subtitleslangs': ['es', 'pt']})
+        subs = result['requested_subtitles']
+        self.assertTrue(subs)
+        self.assertEqual(set(subs.keys()), set(['es', 'pt']))
+        self.assertFalse(subs['es']['_auto'])
+        self.assertTrue(subs['pt']['_auto'])
+
+        result = get_info({'writeautomaticsub': True, 'subtitleslangs': ['es', 'pt']})
+        subs = result['requested_subtitles']
+        self.assertTrue(subs)
+        self.assertEqual(set(subs.keys()), set(['es', 'pt']))
+        self.assertTrue(subs['es']['_auto'])
+        self.assertTrue(subs['pt']['_auto'])
+
     def test_add_extra_info(self):
         test_dict = {
             'extractor': 'Foo',
@@ -314,6 +429,36 @@ class TestFormatSelection(unittest.TestCase):
         assertRegexpMatches(self, ydl._format_note({
             'vbr': 10,
         }), '^\s*10k$')
+
+    def test_postprocessors(self):
+        filename = 'post-processor-testfile.mp4'
+        audiofile = filename + '.mp3'
+
+        class SimplePP(PostProcessor):
+            def run(self, info):
+                with open(audiofile, 'wt') as f:
+                    f.write('EXAMPLE')
+                info['filepath']
+                return False, info
+
+        def run_pp(params):
+            with open(filename, 'wt') as f:
+                f.write('EXAMPLE')
+            ydl = YoutubeDL(params)
+            ydl.add_post_processor(SimplePP())
+            ydl.post_process(filename, {'filepath': filename})
+
+        run_pp({'keepvideo': True})
+        self.assertTrue(os.path.exists(filename), '%s doesn\'t exist' % filename)
+        self.assertTrue(os.path.exists(audiofile), '%s doesn\'t exist' % audiofile)
+        os.unlink(filename)
+        os.unlink(audiofile)
+
+        run_pp({'keepvideo': False})
+        self.assertFalse(os.path.exists(filename), '%s exists' % filename)
+        self.assertTrue(os.path.exists(audiofile), '%s doesn\'t exist' % audiofile)
+        os.unlink(audiofile)
+
 
 if __name__ == '__main__':
     unittest.main()

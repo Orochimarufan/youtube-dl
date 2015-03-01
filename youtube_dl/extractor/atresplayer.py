@@ -4,9 +4,12 @@ import time
 import hmac
 
 from .common import InfoExtractor
-from ..utils import (
+from ..compat import (
     compat_str,
+    compat_urllib_parse,
     compat_urllib_request,
+)
+from ..utils import (
     int_or_none,
     float_or_none,
     xpath_text,
@@ -44,6 +47,33 @@ class AtresPlayerIE(InfoExtractor):
     _PLAYER_URL_TEMPLATE = 'https://servicios.atresplayer.com/episode/getplayer.json?episodePk=%s'
     _EPISODE_URL_TEMPLATE = 'http://www.atresplayer.com/episodexml/%s'
 
+    _LOGIN_URL = 'https://servicios.atresplayer.com/j_spring_security_check'
+
+    def _real_initialize(self):
+        self._login()
+
+    def _login(self):
+        (username, password) = self._get_login_info()
+        if username is None:
+            return
+
+        login_form = {
+            'j_username': username,
+            'j_password': password,
+        }
+
+        request = compat_urllib_request.Request(
+            self._LOGIN_URL, compat_urllib_parse.urlencode(login_form).encode('utf-8'))
+        request.add_header('Content-Type', 'application/x-www-form-urlencoded')
+        response = self._download_webpage(
+            request, None, 'Logging in as %s' % username)
+
+        error = self._html_search_regex(
+            r'(?s)<ul class="list_error">(.+?)</ul>', response, 'error', default=None)
+        if error:
+            raise ExtractorError(
+                'Unable to login: %s' % error, expected=True)
+
     def _real_extract(self, url):
         video_id = self._match_id(url)
 
@@ -65,7 +95,7 @@ class AtresPlayerIE(InfoExtractor):
         for fmt in ['windows', 'android_tablet']:
             request = compat_urllib_request.Request(
                 self._URL_VIDEO_TEMPLATE.format(fmt, episode_id, timestamp_shifted, token))
-            request.add_header('Youtubedl-user-agent', self._USER_AGENT)
+            request.add_header('User-Agent', self._USER_AGENT)
 
             fmt_json = self._download_json(
                 request, video_id, 'Downloading %s video JSON' % fmt)
@@ -75,13 +105,22 @@ class AtresPlayerIE(InfoExtractor):
                 raise ExtractorError(
                     '%s returned error: %s' % (self.IE_NAME, result), expected=True)
 
-            for _, video_url in fmt_json['resultObject'].items():
+            for format_id, video_url in fmt_json['resultObject'].items():
+                if format_id == 'token' or not video_url.startswith('http'):
+                    continue
                 if video_url.endswith('/Manifest'):
-                    formats.extend(self._extract_f4m_formats(video_url[:-9] + '/manifest.f4m', video_id))
+                    if 'geodeswowsmpra3player' in video_url:
+                        f4m_path = video_url.split('smil:', 1)[-1].split('free_', 1)[0]
+                        f4m_url = 'http://drg.antena3.com/{0}hds/es/sd.f4m'.format(f4m_path)
+                        # this videos are protected by DRM, the f4m downloader doesn't support them
+                        continue
+                    else:
+                        f4m_url = video_url[:-9] + '/manifest.f4m'
+                    formats.extend(self._extract_f4m_formats(f4m_url, video_id))
                 else:
                     formats.append({
                         'url': video_url,
-                        'format_id': 'android',
+                        'format_id': 'android-%s' % format_id,
                         'preference': 1,
                     })
         self._sort_formats(formats)
@@ -104,6 +143,14 @@ class AtresPlayerIE(InfoExtractor):
         description = xpath_text(art, './description', 'description')
         thumbnail = xpath_text(episode, './media/asset/files/background', 'thumbnail')
 
+        subtitles = {}
+        subtitle_url = xpath_text(episode, './media/asset/files/subtitle', 'subtitle')
+        if subtitle_url:
+            subtitles['es'] = [{
+                'ext': 'srt',
+                'url': subtitle_url,
+            }]
+
         return {
             'id': video_id,
             'title': title,
@@ -111,4 +158,5 @@ class AtresPlayerIE(InfoExtractor):
             'thumbnail': thumbnail,
             'duration': duration,
             'formats': formats,
+            'subtitles': subtitles,
         }

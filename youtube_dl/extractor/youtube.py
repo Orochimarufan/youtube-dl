@@ -11,7 +11,6 @@ import time
 import traceback
 
 from .common import InfoExtractor, SearchInfoExtractor
-from .subtitles import SubtitlesInfoExtractor
 from ..jsinterp import JSInterpreter
 from ..swfinterp import SWFInterpreter
 from ..compat import (
@@ -25,6 +24,7 @@ from ..compat import (
 from ..utils import (
     clean_html,
     ExtractorError,
+    float_or_none,
     get_element_by_attribute,
     get_element_by_id,
     int_or_none,
@@ -184,7 +184,7 @@ class YoutubeBaseInfoExtractor(InfoExtractor):
             return
 
 
-class YoutubeIE(YoutubeBaseInfoExtractor, SubtitlesInfoExtractor):
+class YoutubeIE(YoutubeBaseInfoExtractor):
     IE_DESC = 'YouTube.com'
     _VALID_URL = r"""(?x)^
                      (
@@ -264,9 +264,9 @@ class YoutubeIE(YoutubeBaseInfoExtractor, SubtitlesInfoExtractor):
         '266': {'ext': 'mp4', 'height': 2160, 'format_note': 'DASH video', 'acodec': 'none', 'preference': -40, 'vcodec': 'h264'},
 
         # Dash mp4 audio
-        '139': {'ext': 'm4a', 'format_note': 'DASH audio', 'acodec': 'aac', 'vcodec': 'none', 'abr': 48, 'preference': -50},
-        '140': {'ext': 'm4a', 'format_note': 'DASH audio', 'acodec': 'aac', 'vcodec': 'none', 'abr': 128, 'preference': -50},
-        '141': {'ext': 'm4a', 'format_note': 'DASH audio', 'acodec': 'aac', 'vcodec': 'none', 'abr': 256, 'preference': -50},
+        '139': {'ext': 'm4a', 'format_note': 'DASH audio', 'acodec': 'aac', 'vcodec': 'none', 'abr': 48, 'preference': -50, 'container': 'm4a_dash'},
+        '140': {'ext': 'm4a', 'format_note': 'DASH audio', 'acodec': 'aac', 'vcodec': 'none', 'abr': 128, 'preference': -50, 'container': 'm4a_dash'},
+        '141': {'ext': 'm4a', 'format_note': 'DASH audio', 'acodec': 'aac', 'vcodec': 'none', 'abr': 256, 'preference': -50, 'container': 'm4a_dash'},
 
         # Dash webm
         '167': {'ext': 'webm', 'height': 360, 'width': 640, 'format_note': 'DASH video', 'acodec': 'none', 'container': 'webm', 'vcodec': 'VP8', 'preference': -40},
@@ -388,6 +388,23 @@ class YoutubeIE(YoutubeBaseInfoExtractor, SubtitlesInfoExtractor):
                 'uploader': 'AfrojackVEVO',
                 'uploader_id': 'AfrojackVEVO',
                 'upload_date': '20131011',
+            },
+            'params': {
+                'youtube_include_dash_manifest': True,
+                'format': '141',
+            },
+        },
+        # JS player signature function name containing $
+        {
+            'url': 'https://www.youtube.com/watch?v=nfWlot6h_JM',
+            'info_dict': {
+                'id': 'nfWlot6h_JM',
+                'ext': 'm4a',
+                'title': 'Taylor Swift - Shake It Off',
+                'description': 'md5:2acfda1b285bdd478ccec22f9918199d',
+                'uploader': 'TaylorSwiftVEVO',
+                'uploader_id': 'TaylorSwiftVEVO',
+                'upload_date': '20140818',
             },
             'params': {
                 'youtube_include_dash_manifest': True,
@@ -523,26 +540,30 @@ class YoutubeIE(YoutubeBaseInfoExtractor, SubtitlesInfoExtractor):
         if cache_spec is not None:
             return lambda s: ''.join(s[i] for i in cache_spec)
 
+        download_note = (
+            'Downloading player %s' % player_url
+            if self._downloader.params.get('verbose') else
+            'Downloading %s player %s' % (player_type, player_id)
+        )
         if player_type == 'js':
             code = self._download_webpage(
                 player_url, video_id,
-                note='Downloading %s player %s' % (player_type, player_id),
+                note=download_note,
                 errnote='Download of %s failed' % player_url)
             res = self._parse_sig_js(code)
         elif player_type == 'swf':
             urlh = self._request_webpage(
                 player_url, video_id,
-                note='Downloading %s player %s' % (player_type, player_id),
+                note=download_note,
                 errnote='Download of %s failed' % player_url)
             code = urlh.read()
             res = self._parse_sig_swf(code)
         else:
             assert False, 'Invalid player type %r' % player_type
 
-        if cache_spec is None:
-            test_string = ''.join(map(compat_chr, range(len(example_sig))))
-            cache_res = res(test_string)
-            cache_spec = [ord(c) for c in cache_res]
+        test_string = ''.join(map(compat_chr, range(len(example_sig))))
+        cache_res = res(test_string)
+        cache_spec = [ord(c) for c in cache_res]
 
         self._downloader.cache.store('youtube-sigfuncs', func_id, cache_spec)
         return res
@@ -588,7 +609,7 @@ class YoutubeIE(YoutubeBaseInfoExtractor, SubtitlesInfoExtractor):
 
     def _parse_sig_js(self, jscode):
         funcname = self._search_regex(
-            r'\.sig\|\|([a-zA-Z0-9]+)\(', jscode,
+            r'\.sig\|\|([a-zA-Z0-9$]+)\(', jscode,
             'Initial JS player signature function name')
 
         jsi = JSInterpreter(jscode)
@@ -626,7 +647,7 @@ class YoutubeIE(YoutubeBaseInfoExtractor, SubtitlesInfoExtractor):
             raise ExtractorError(
                 'Signature extraction failed: ' + tb, cause=e)
 
-    def _get_available_subtitles(self, video_id, webpage):
+    def _get_subtitles(self, video_id, webpage):
         try:
             subs_doc = self._download_xml(
                 'https://video.google.com/timedtext?hl=en&type=list&v=%s' % video_id,
@@ -640,23 +661,27 @@ class YoutubeIE(YoutubeBaseInfoExtractor, SubtitlesInfoExtractor):
             lang = track.attrib['lang_code']
             if lang in sub_lang_list:
                 continue
-            params = compat_urllib_parse.urlencode({
-                'lang': lang,
-                'v': video_id,
-                'fmt': self._downloader.params.get('subtitlesformat', 'srt'),
-                'name': track.attrib['name'].encode('utf-8'),
-            })
-            url = 'https://www.youtube.com/api/timedtext?' + params
-            sub_lang_list[lang] = url
+            sub_formats = []
+            for ext in ['sbv', 'vtt', 'srt']:
+                params = compat_urllib_parse.urlencode({
+                    'lang': lang,
+                    'v': video_id,
+                    'fmt': ext,
+                    'name': track.attrib['name'].encode('utf-8'),
+                })
+                sub_formats.append({
+                    'url': 'https://www.youtube.com/api/timedtext?' + params,
+                    'ext': ext,
+                })
+            sub_lang_list[lang] = sub_formats
         if not sub_lang_list:
             self._downloader.report_warning('video doesn\'t have subtitles')
             return {}
         return sub_lang_list
 
-    def _get_available_automatic_caption(self, video_id, webpage):
+    def _get_automatic_captions(self, video_id, webpage):
         """We need the webpage for getting the captions url, pass it as an
            argument to speed up the process."""
-        sub_format = self._downloader.params.get('subtitlesformat', 'srt')
         self.to_screen('%s: Looking for automatic captions' % video_id)
         mobj = re.search(r';ytplayer.config = ({.*?});', webpage)
         err_msg = 'Couldn\'t find automatic captions for %s' % video_id
@@ -686,14 +711,20 @@ class YoutubeIE(YoutubeBaseInfoExtractor, SubtitlesInfoExtractor):
             sub_lang_list = {}
             for lang_node in caption_list.findall('target'):
                 sub_lang = lang_node.attrib['lang_code']
-                params = compat_urllib_parse.urlencode({
-                    'lang': original_lang,
-                    'tlang': sub_lang,
-                    'fmt': sub_format,
-                    'ts': timestamp,
-                    'kind': caption_kind,
-                })
-                sub_lang_list[sub_lang] = caption_url + '&' + params
+                sub_formats = []
+                for ext in ['sbv', 'vtt', 'srt']:
+                    params = compat_urllib_parse.urlencode({
+                        'lang': original_lang,
+                        'tlang': sub_lang,
+                        'fmt': ext,
+                        'ts': timestamp,
+                        'kind': caption_kind,
+                    })
+                    sub_formats.append({
+                        'url': caption_url + '&' + params,
+                        'ext': ext,
+                    })
+                sub_lang_list[sub_lang] = sub_formats
             return sub_lang_list
         # An extractor error can be raise by the download process if there are
         # no automatic captions but there are subtitles
@@ -763,8 +794,9 @@ class YoutubeIE(YoutubeBaseInfoExtractor, SubtitlesInfoExtractor):
                     fo for fo in formats
                     if fo['format_id'] == format_id)
             except StopIteration:
-                f.update(self._formats.get(format_id, {}).items())
-                formats.append(f)
+                full_info = self._formats.get(format_id, {}).copy()
+                full_info.update(f)
+                formats.append(full_info)
             else:
                 existing_format.update(f)
         return formats
@@ -792,6 +824,7 @@ class YoutubeIE(YoutubeBaseInfoExtractor, SubtitlesInfoExtractor):
             player_url = None
 
         # Get video info
+        embed_webpage = None
         if re.search(r'player-age-gate-content">', video_webpage) is not None:
             age_gate = True
             # We simulate the access to the video from www.youtube.com/v/{video_id}
@@ -946,10 +979,7 @@ class YoutubeIE(YoutubeBaseInfoExtractor, SubtitlesInfoExtractor):
 
         # subtitles
         video_subtitles = self.extract_subtitles(video_id, video_webpage)
-
-        if self._downloader.params.get('listsubtitles', False):
-            self._list_available_subtitles(video_id, video_webpage)
-            return
+        automatic_captions = self.extract_automatic_captions(video_id, video_webpage)
 
         if 'length_seconds' not in video_info:
             self._downloader.report_warning('unable to extract video duration')
@@ -999,10 +1029,21 @@ class YoutubeIE(YoutubeBaseInfoExtractor, SubtitlesInfoExtractor):
                     url += '&signature=' + url_data['sig'][0]
                 elif 's' in url_data:
                     encrypted_sig = url_data['s'][0]
+                    ASSETS_RE = r'"assets":.+?"js":\s*("[^"]+")'
 
                     jsplayer_url_json = self._search_regex(
-                        r'"assets":.+?"js":\s*("[^"]+")',
-                        embed_webpage if age_gate else video_webpage, 'JS player URL')
+                        ASSETS_RE,
+                        embed_webpage if age_gate else video_webpage,
+                        'JS player URL (1)', default=None)
+                    if not jsplayer_url_json and not age_gate:
+                        # We need the embed website after all
+                        if embed_webpage is None:
+                            embed_url = proto + '://www.youtube.com/embed/%s' % video_id
+                            embed_webpage = self._download_webpage(
+                                embed_url, video_id, 'Downloading embed webpage')
+                        jsplayer_url_json = self._search_regex(
+                            ASSETS_RE, embed_webpage, 'JS player URL')
+
                     player_url = json.loads(jsplayer_url_json)
                     if player_url is None:
                         player_url_json = self._search_regex(
@@ -1087,6 +1128,7 @@ class YoutubeIE(YoutubeBaseInfoExtractor, SubtitlesInfoExtractor):
             'description': video_description,
             'categories': video_categories,
             'subtitles': video_subtitles,
+            'automatic_captions': automatic_captions,
             'duration': video_duration,
             'age_limit': 18 if age_gate else 0,
             'annotations': video_annotations,
@@ -1094,6 +1136,7 @@ class YoutubeIE(YoutubeBaseInfoExtractor, SubtitlesInfoExtractor):
             'view_count': view_count,
             'like_count': like_count,
             'dislike_count': dislike_count,
+            'average_rating': float_or_none(video_info.get('avg_rating', [None])[0]),
             'formats': formats,
         }
 
@@ -1110,13 +1153,13 @@ class YoutubePlaylistIE(YoutubeBaseInfoExtractor):
                         |  p/
                         )
                         (
-                            (?:PL|LL|EC|UU|FL|RD)?[0-9A-Za-z-_]{10,}
+                            (?:PL|LL|EC|UU|FL|RD|UL)?[0-9A-Za-z-_]{10,}
                             # Top tracks, they can also include dots
                             |(?:MC)[\w\.]*
                         )
                         .*
                      |
-                        ((?:PL|LL|EC|UU|FL|RD)[0-9A-Za-z-_]{10,})
+                        ((?:PL|LL|EC|UU|FL|RD|UL)[0-9A-Za-z-_]{10,})
                      )"""
     _TEMPLATE_URL = 'https://www.youtube.com/playlist?list=%s'
     _VIDEO_RE = r'href="\s*/watch\?v=(?P<id>[0-9A-Za-z_-]{11})&amp;[^"]*?index=(?P<index>\d+)'
@@ -1131,6 +1174,7 @@ class YoutubePlaylistIE(YoutubeBaseInfoExtractor):
     }, {
         'url': 'https://www.youtube.com/playlist?list=PLtPgu7CB4gbZDA7i_euNxn75ISqxwZPYx',
         'info_dict': {
+            'id': 'PLtPgu7CB4gbZDA7i_euNxn75ISqxwZPYx',
             'title': 'YDL_Empty_List',
         },
         'playlist_count': 0,
@@ -1139,6 +1183,7 @@ class YoutubePlaylistIE(YoutubeBaseInfoExtractor):
         'url': 'https://www.youtube.com/playlist?list=PLwP_SiAcdui0KVebT0mU9Apz359a4ubsC',
         'info_dict': {
             'title': '29C3: Not my department',
+            'id': 'PLwP_SiAcdui0KVebT0mU9Apz359a4ubsC',
         },
         'playlist_count': 95,
     }, {
@@ -1146,6 +1191,7 @@ class YoutubePlaylistIE(YoutubeBaseInfoExtractor):
         'url': 'PLBB231211A4F62143',
         'info_dict': {
             'title': '[OLD]Team Fortress 2 (Class-based LP)',
+            'id': 'PLBB231211A4F62143',
         },
         'playlist_mincount': 26,
     }, {
@@ -1153,12 +1199,14 @@ class YoutubePlaylistIE(YoutubeBaseInfoExtractor):
         'url': 'https://www.youtube.com/playlist?list=UUBABnxM4Ar9ten8Mdjj1j0Q',
         'info_dict': {
             'title': 'Uploads from Cauchemar',
+            'id': 'UUBABnxM4Ar9ten8Mdjj1j0Q',
         },
         'playlist_mincount': 799,
     }, {
         'url': 'PLtPgu7CB4gbY9oDN3drwC3cMbJggS7dKl',
         'info_dict': {
             'title': 'YDL_safe_search',
+            'id': 'PLtPgu7CB4gbY9oDN3drwC3cMbJggS7dKl',
         },
         'playlist_count': 2,
     }, {
@@ -1167,6 +1215,7 @@ class YoutubePlaylistIE(YoutubeBaseInfoExtractor):
         'playlist_count': 4,
         'info_dict': {
             'title': 'JODA15',
+            'id': 'PL6IaIsEjSbf96XFRuNccS_RuEXwNdsoEu',
         }
     }, {
         'note': 'Embedded SWF player',
@@ -1174,12 +1223,14 @@ class YoutubePlaylistIE(YoutubeBaseInfoExtractor):
         'playlist_count': 4,
         'info_dict': {
             'title': 'JODA7',
+            'id': 'YN5VISEtHet5D4NEvfTd0zcgFk84NqFZ',
         }
     }, {
         'note': 'Buggy playlist: the webpage has a "Load more" button but it doesn\'t have more videos',
         'url': 'https://www.youtube.com/playlist?list=UUXw-G3eDE9trcvY2sBMM_aA',
         'info_dict': {
-                'title': 'Uploads from Interstellar Movie',
+            'title': 'Uploads from Interstellar Movie',
+            'id': 'UUXw-G3eDE9trcvY2sBMM_aA',
         },
         'playlist_mincout': 21,
     }]
@@ -1193,7 +1244,7 @@ class YoutubePlaylistIE(YoutubeBaseInfoExtractor):
             for vid_id in ids]
 
     def _extract_mix(self, playlist_id):
-        # The mixes are generated from a a single video
+        # The mixes are generated from a single video
         # the id of the playlist is just 'RD' + video_id
         url = 'https://youtube.com/watch?v=%s&list=%s' % (playlist_id[-11:], playlist_id)
         webpage = self._download_webpage(
@@ -1229,7 +1280,7 @@ class YoutubePlaylistIE(YoutubeBaseInfoExtractor):
             else:
                 self.to_screen('Downloading playlist %s - add --no-playlist to just download video %s' % (playlist_id, video_id))
 
-        if playlist_id.startswith('RD'):
+        if playlist_id.startswith('RD') or playlist_id.startswith('UL'):
             # Mixes require a custom extraction process
             return self._extract_mix(playlist_id)
 
@@ -1285,6 +1336,9 @@ class YoutubeChannelIE(InfoExtractor):
         'note': 'paginated channel',
         'url': 'https://www.youtube.com/channel/UCKfVa3S1e4PHvxWcwyMMg8w',
         'playlist_mincount': 91,
+        'info_dict': {
+            'id': 'UCKfVa3S1e4PHvxWcwyMMg8w',
+        }
     }]
 
     def extract_videos_from_page(self, page):
@@ -1665,11 +1719,18 @@ class YoutubeTruncatedURLIE(InfoExtractor):
     IE_NAME = 'youtube:truncated_url'
     IE_DESC = False  # Do not list
     _VALID_URL = r'''(?x)
-        (?:https?://)?[^/]+/watch\?(?:
+        (?:https?://)?
+        (?:\w+\.)?[yY][oO][uU][tT][uU][bB][eE](?:-nocookie)?\.com/
+        (?:watch\?(?:
             feature=[a-z_]+|
-            annotation_id=annotation_[^&]+
-        )?$|
-        (?:https?://)?(?:www\.)?youtube\.com/attribution_link\?a=[^&]+$
+            annotation_id=annotation_[^&]+|
+            x-yt-cl=[0-9]+|
+            hl=[^&]*|
+        )?
+        |
+            attribution_link\?a=[^&]+
+        )
+        $
     '''
 
     _TESTS = [{
@@ -1677,6 +1738,15 @@ class YoutubeTruncatedURLIE(InfoExtractor):
         'only_matching': True,
     }, {
         'url': 'http://www.youtube.com/watch?',
+        'only_matching': True,
+    }, {
+        'url': 'https://www.youtube.com/watch?x-yt-cl=84503534',
+        'only_matching': True,
+    }, {
+        'url': 'https://www.youtube.com/watch?feature=foo',
+        'only_matching': True,
+    }, {
+        'url': 'https://www.youtube.com/watch?hl=en-GB',
         'only_matching': True,
     }]
 
@@ -1693,7 +1763,7 @@ class YoutubeTruncatedURLIE(InfoExtractor):
 class YoutubeTruncatedIDIE(InfoExtractor):
     IE_NAME = 'youtube:truncated_id'
     IE_DESC = False  # Do not list
-    _VALID_URL = r'https?://(?:www\.)youtube\.com/watch\?v=(?P<id>[0-9A-Za-z_-]{1,10})$'
+    _VALID_URL = r'https?://(?:www\.)?youtube\.com/watch\?v=(?P<id>[0-9A-Za-z_-]{1,10})$'
 
     _TESTS = [{
         'url': 'https://www.youtube.com/watch?v=N_708QY7Ob',
