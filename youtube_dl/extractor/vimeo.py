@@ -4,7 +4,6 @@ from __future__ import unicode_literals
 import json
 import re
 import itertools
-import hashlib
 
 from .common import InfoExtractor
 from ..compat import (
@@ -20,6 +19,7 @@ from ..utils import (
     RegexNotFoundError,
     smuggle_url,
     std_headers,
+    unified_strdate,
     unsmuggle_url,
     urlencode_postdata,
 )
@@ -140,6 +140,7 @@ class VimeoIE(VimeoBaseInfoExtractor):
                 'description': 'md5:8678b246399b070816b12313e8b4eb5c',
                 'uploader_id': 'atencio',
                 'uploader': 'Peter Atencio',
+                'upload_date': '20130927',
                 'duration': 187,
             },
         },
@@ -176,17 +177,15 @@ class VimeoIE(VimeoBaseInfoExtractor):
         password = self._downloader.params.get('videopassword', None)
         if password is None:
             raise ExtractorError('This video is protected by a password, use the --video-password option', expected=True)
-        token = self._search_regex(r'xsrft: \'(.*?)\'', webpage, 'login token')
-        data = compat_urllib_parse.urlencode({
+        token = self._search_regex(r'xsrft = \'(.*?)\'', webpage, 'login token')
+        data = urlencode_postdata({
             'password': password,
             'token': token,
         })
-        # I didn't manage to use the password with https
-        if url.startswith('https'):
-            pass_url = url.replace('https', 'http')
-        else:
-            pass_url = url
-        password_request = compat_urllib_request.Request(pass_url + '/password', data)
+        if url.startswith('http://'):
+            # vimeo only supports https now, but the user can give an http url
+            url = url.replace('http://', 'https://')
+        password_request = compat_urllib_request.Request(url + '/password', data)
         password_request.add_header('Content-Type', 'application/x-www-form-urlencoded')
         password_request.add_header('Cookie', 'xsrft=%s' % token)
         return self._download_webpage(
@@ -223,12 +222,7 @@ class VimeoIE(VimeoBaseInfoExtractor):
         video_id = mobj.group('id')
         orig_url = url
         if mobj.group('pro') or mobj.group('player'):
-            url = 'http://player.vimeo.com/video/' + video_id
-
-        password = self._downloader.params.get('videopassword', None)
-        if password:
-            headers['Cookie'] = '%s_password=%s' % (
-                video_id, hashlib.md5(password.encode('utf-8')).hexdigest())
+            url = 'https://player.vimeo.com/video/' + video_id
 
         # Retrieve video webpage to extract further information
         request = compat_urllib_request.Request(url, None, headers)
@@ -323,9 +317,9 @@ class VimeoIE(VimeoBaseInfoExtractor):
 
         # Extract upload date
         video_upload_date = None
-        mobj = re.search(r'<meta itemprop="dateCreated" content="(\d{4})-(\d{2})-(\d{2})T', webpage)
+        mobj = re.search(r'<time[^>]+datetime="([^"]+)"', webpage)
         if mobj is not None:
-            video_upload_date = mobj.group(1) + mobj.group(2) + mobj.group(3)
+            video_upload_date = unified_strdate(mobj.group(1))
 
         try:
             view_count = int(self._search_regex(r'UserPlays:(\d+)', webpage, 'view count'))
@@ -435,10 +429,10 @@ class VimeoChannelIE(InfoExtractor):
             name="([^"]+)"\s+
             value="([^"]*)"
             ''', login_form))
-        token = self._search_regex(r'xsrft: \'(.*?)\'', webpage, 'login token')
+        token = self._search_regex(r'xsrft = \'(.*?)\'', webpage, 'login token')
         fields['token'] = token
         fields['password'] = password
-        post = compat_urllib_parse.urlencode(fields)
+        post = urlencode_postdata(fields)
         password_path = self._search_regex(
             r'action="([^"]+)"', login_form, 'password URL')
         password_url = compat_urlparse.urljoin(page_url, password_path)
@@ -500,10 +494,10 @@ class VimeoUserIE(VimeoChannelIE):
 
 class VimeoAlbumIE(VimeoChannelIE):
     IE_NAME = 'vimeo:album'
-    _VALID_URL = r'https?://vimeo\.com/album/(?P<id>\d+)'
+    _VALID_URL = r'https://vimeo\.com/album/(?P<id>\d+)'
     _TITLE_RE = r'<header id="page_header">\n\s*<h1>(.*?)</h1>'
     _TESTS = [{
-        'url': 'http://vimeo.com/album/2632481',
+        'url': 'https://vimeo.com/album/2632481',
         'info_dict': {
             'id': '2632481',
             'title': 'Staff Favorites: November 2013',
@@ -527,7 +521,7 @@ class VimeoAlbumIE(VimeoChannelIE):
 
     def _real_extract(self, url):
         album_id = self._match_id(url)
-        return self._extract_videos(album_id, 'http://vimeo.com/album/%s' % album_id)
+        return self._extract_videos(album_id, 'https://vimeo.com/album/%s' % album_id)
 
 
 class VimeoGroupsIE(VimeoAlbumIE):

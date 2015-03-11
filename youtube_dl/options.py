@@ -195,6 +195,12 @@ def parseOpts(overrideArguments=None):
         action='store_const', const='::', dest='source_address',
         help='Make all connections via IPv6 (experimental)',
     )
+    network.add_option(
+        '--cn-verification-proxy',
+        dest='cn_verification_proxy', default=None, metavar='URL',
+        help='Use this proxy to verify the IP address for some Chinese sites. '
+        'The default proxy specified by --proxy (or none, if the options is not present) is used for the actual downloading. (experimental)'
+    )
 
     selection = optparse.OptionGroup(parser, 'Video Selection')
     selection.add_option(
@@ -431,8 +437,12 @@ def parseOpts(overrideArguments=None):
     downloader.add_option(
         '--external-downloader',
         dest='external_downloader', metavar='COMMAND',
-        help='(experimental) Use the specified external downloader. '
+        help='Use the specified external downloader. '
              'Currently supports %s' % ','.join(list_external_downloaders()))
+    downloader.add_option(
+        '--external-downloader-args',
+        dest='external_downloader_args', metavar='ARGS',
+        help='Give these arguments to the external downloader.')
 
     workarounds = optparse.OptionGroup(parser, 'Workarounds')
     workarounds.add_option(
@@ -549,7 +559,7 @@ def parseOpts(overrideArguments=None):
         action='store_true', dest='verbose', default=False,
         help='print various debugging information')
     verbosity.add_option(
-        '--dump-intermediate-pages',
+        '--dump-pages', '--dump-intermediate-pages',
         action='store_true', dest='dump_intermediate_pages', default=False,
         help='print downloaded pages to debug problems (very verbose)')
     verbosity.add_option(

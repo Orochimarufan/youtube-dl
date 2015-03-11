@@ -767,6 +767,10 @@ class InfoExtractor(object):
                 formats)
 
     def _is_valid_url(self, url, video_id, item='video'):
+        url = self._proto_relative_url(url, scheme='http:')
+        # For now assume non HTTP(S) URLs always valid
+        if not (url.startswith('http://') or url.startswith('https://')):
+            return True
         try:
             self._request_webpage(url, video_id, 'Checking %s URL' % item)
             return True
@@ -835,7 +839,7 @@ class InfoExtractor(object):
                               m3u8_id=None):
 
         formats = [{
-            'format_id': '-'.join(filter(None, [m3u8_id, 'm3u8-meta'])),
+            'format_id': '-'.join(filter(None, [m3u8_id, 'meta'])),
             'url': m3u8_url,
             'ext': ext,
             'protocol': 'm3u8',
@@ -879,8 +883,13 @@ class InfoExtractor(object):
                     formats.append({'url': format_url(line)})
                     continue
                 tbr = int_or_none(last_info.get('BANDWIDTH'), scale=1000)
+                format_id = []
+                if m3u8_id:
+                    format_id.append(m3u8_id)
+                last_media_name = last_media.get('NAME') if last_media else None
+                format_id.append(last_media_name if last_media_name else '%d' % (tbr if tbr else len(formats)))
                 f = {
-                    'format_id': '-'.join(filter(None, [m3u8_id, 'm3u8-%d' % (tbr if tbr else len(formats))])),
+                    'format_id': '-'.join(format_id),
                     'url': format_url(line.strip()),
                     'tbr': tbr,
                     'ext': ext,
