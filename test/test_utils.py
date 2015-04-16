@@ -24,6 +24,7 @@ from youtube_dl.utils import (
     encodeFilename,
     escape_rfc3986,
     escape_url,
+    ExtractorError,
     find_xpath_attr,
     fix_xml_ampersands,
     InAdvancePagedList,
@@ -38,6 +39,8 @@ from youtube_dl.utils import (
     parse_iso8601,
     read_batch_urls,
     sanitize_filename,
+    sanitize_path,
+    sanitize_url_path_consecutive_slashes,
     shell_quote,
     smuggle_url,
     str_to_int,
@@ -52,6 +55,7 @@ from youtube_dl.utils import (
     urlencode_postdata,
     version_tuple,
     xpath_with_ns,
+    xpath_text,
     render_table,
     match_str,
 )
@@ -85,8 +89,11 @@ class TestUtil(unittest.TestCase):
         self.assertEqual(
             sanitize_filename('New World record at 0:12:34'),
             'New World record at 0_12_34')
+
         self.assertEqual(sanitize_filename('--gasdgf'), '_-gasdgf')
         self.assertEqual(sanitize_filename('--gasdgf', is_id=True), '--gasdgf')
+        self.assertEqual(sanitize_filename('.gasdgf'), 'gasdgf')
+        self.assertEqual(sanitize_filename('.gasdgf', is_id=True), '.gasdgf')
 
         forbidden = '"\0\\/'
         for fc in forbidden:
@@ -128,6 +135,62 @@ class TestUtil(unittest.TestCase):
         self.assertEqual(sanitize_filename('_BD_eEpuzXw', is_id=True), '_BD_eEpuzXw')
         self.assertEqual(sanitize_filename('N0Y__7-UOdI', is_id=True), 'N0Y__7-UOdI')
 
+    def test_sanitize_path(self):
+        if sys.platform != 'win32':
+            return
+
+        self.assertEqual(sanitize_path('abc'), 'abc')
+        self.assertEqual(sanitize_path('abc/def'), 'abc\\def')
+        self.assertEqual(sanitize_path('abc\\def'), 'abc\\def')
+        self.assertEqual(sanitize_path('abc|def'), 'abc#def')
+        self.assertEqual(sanitize_path('<>:"|?*'), '#######')
+        self.assertEqual(sanitize_path('C:/abc/def'), 'C:\\abc\\def')
+        self.assertEqual(sanitize_path('C?:/abc/def'), 'C##\\abc\\def')
+
+        self.assertEqual(sanitize_path('\\\\?\\UNC\\ComputerName\\abc'), '\\\\?\\UNC\\ComputerName\\abc')
+        self.assertEqual(sanitize_path('\\\\?\\UNC/ComputerName/abc'), '\\\\?\\UNC\\ComputerName\\abc')
+
+        self.assertEqual(sanitize_path('\\\\?\\C:\\abc'), '\\\\?\\C:\\abc')
+        self.assertEqual(sanitize_path('\\\\?\\C:/abc'), '\\\\?\\C:\\abc')
+        self.assertEqual(sanitize_path('\\\\?\\C:\\ab?c\\de:f'), '\\\\?\\C:\\ab#c\\de#f')
+        self.assertEqual(sanitize_path('\\\\?\\C:\\abc'), '\\\\?\\C:\\abc')
+
+        self.assertEqual(
+            sanitize_path('youtube/%(uploader)s/%(autonumber)s-%(title)s-%(upload_date)s.%(ext)s'),
+            'youtube\\%(uploader)s\\%(autonumber)s-%(title)s-%(upload_date)s.%(ext)s')
+
+        self.assertEqual(
+            sanitize_path('youtube/TheWreckingYard ./00001-Not bad, Especially for Free! (1987 Yamaha 700)-20141116.mp4.part'),
+            'youtube\\TheWreckingYard #\\00001-Not bad, Especially for Free! (1987 Yamaha 700)-20141116.mp4.part')
+        self.assertEqual(sanitize_path('abc/def...'), 'abc\\def..#')
+        self.assertEqual(sanitize_path('abc.../def'), 'abc..#\\def')
+        self.assertEqual(sanitize_path('abc.../def...'), 'abc..#\\def..#')
+
+        self.assertEqual(sanitize_path('../abc'), '..\\abc')
+        self.assertEqual(sanitize_path('../../abc'), '..\\..\\abc')
+        self.assertEqual(sanitize_path('./abc'), 'abc')
+        self.assertEqual(sanitize_path('./../abc'), '..\\abc')
+
+    def test_sanitize_url_path_consecutive_slashes(self):
+        self.assertEqual(
+            sanitize_url_path_consecutive_slashes('http://hostname/foo//bar/filename.html'),
+            'http://hostname/foo/bar/filename.html')
+        self.assertEqual(
+            sanitize_url_path_consecutive_slashes('http://hostname//foo/bar/filename.html'),
+            'http://hostname/foo/bar/filename.html')
+        self.assertEqual(
+            sanitize_url_path_consecutive_slashes('http://hostname//'),
+            'http://hostname/')
+        self.assertEqual(
+            sanitize_url_path_consecutive_slashes('http://hostname/foo/bar/filename.html'),
+            'http://hostname/foo/bar/filename.html')
+        self.assertEqual(
+            sanitize_url_path_consecutive_slashes('http://hostname/'),
+            'http://hostname/')
+        self.assertEqual(
+            sanitize_url_path_consecutive_slashes('http://hostname/abc//'),
+            'http://hostname/abc/')
+
     def test_ordered_set(self):
         self.assertEqual(orderedSet([1, 1, 2, 3, 4, 4, 5, 6, 7, 3, 5]), [1, 2, 3, 4, 5, 6, 7])
         self.assertEqual(orderedSet([]), [])
@@ -137,6 +200,8 @@ class TestUtil(unittest.TestCase):
 
     def test_unescape_html(self):
         self.assertEqual(unescapeHTML('%20;'), '%20;')
+        self.assertEqual(unescapeHTML('&#x2F;'), '/')
+        self.assertEqual(unescapeHTML('&#47;'), '/')
         self.assertEqual(
             unescapeHTML('&eacute;'), 'é')
 
@@ -162,6 +227,7 @@ class TestUtil(unittest.TestCase):
         self.assertEqual(
             unified_strdate('2/2/2015 6:47:40 PM', day_first=False),
             '20150202')
+        self.assertEqual(unified_strdate('25-09-2014'), '20140925')
 
     def test_find_xpath_attr(self):
         testxml = '''<root>
@@ -188,6 +254,17 @@ class TestUtil(unittest.TestCase):
         self.assertTrue(find('media:song') is not None)
         self.assertEqual(find('media:song/media:author').text, 'The Author')
         self.assertEqual(find('media:song/url').text, 'http://server.com/download.mp3')
+
+    def test_xpath_text(self):
+        testxml = '''<root>
+            <div>
+                <p>Foo</p>
+            </div>
+        </root>'''
+        doc = xml.etree.ElementTree.fromstring(testxml)
+        self.assertEqual(xpath_text(doc, 'div/p'), 'Foo')
+        self.assertTrue(xpath_text(doc, 'div/bar') is None)
+        self.assertRaises(ExtractorError, xpath_text, doc, 'div/bar', fatal=True)
 
     def test_smuggle_url(self):
         data = {"ö": "ö", "abc": [3]}
@@ -393,6 +470,12 @@ class TestUtil(unittest.TestCase):
         d = json.loads(on)
         self.assertEqual(d['x'], 1)
         self.assertEqual(d['y'], 'a')
+
+        on = js_to_json('["abc", "def",]')
+        self.assertEqual(json.loads(on), ['abc', 'def'])
+
+        on = js_to_json('{"abc": "def",}')
+        self.assertEqual(json.loads(on), {'abc': 'def'})
 
     def test_clean_html(self):
         self.assertEqual(clean_html('a:\nb'), 'a: b')

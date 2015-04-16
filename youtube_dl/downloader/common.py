@@ -42,6 +42,8 @@ class FileDownloader(object):
     max_filesize:       Skip files larger than this size
     xattr_set_filesize: Set ytdl.filesize user xattribute with expected size.
                         (experimenatal)
+    external_downloader_args:  A list of additional command-line arguments for the
+                        external downloader.
 
     Subclasses of this one must re-define the real_download method.
     """
@@ -202,7 +204,7 @@ class FileDownloader(object):
             return
         try:
             os.utime(filename, (time.time(), filetime))
-        except:
+        except Exception:
             pass
         return filetime
 
@@ -316,7 +318,7 @@ class FileDownloader(object):
         )
 
         continuedl_and_exists = (
-            self.params.get('continuedl', False) and
+            self.params.get('continuedl', True) and
             os.path.isfile(encodeFilename(filename)) and
             not self.params.get('nopart', False)
         )

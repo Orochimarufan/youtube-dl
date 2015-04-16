@@ -3,7 +3,6 @@ from __future__ import unicode_literals
 import io
 import os
 import subprocess
-import sys
 import time
 
 
@@ -118,6 +117,10 @@ class FFmpegPostProcessor(PostProcessor):
         return self._paths[self.basename]
 
     @property
+    def probe_available(self):
+        return self.probe_basename is not None
+
+    @property
     def probe_executable(self):
         return self._paths[self.probe_basename]
 
@@ -143,7 +146,8 @@ class FFmpegPostProcessor(PostProcessor):
             stderr = stderr.decode('utf-8', 'replace')
             msg = stderr.strip().split('\n')[-1]
             raise FFmpegPostProcessorError(msg)
-        os.utime(encodeFilename(out_path), (oldest_mtime, oldest_mtime))
+        self.try_utime(out_path, oldest_mtime, oldest_mtime)
+
         if self._deletetempfiles:
             for ipath in input_paths:
                 os.remove(ipath)
@@ -169,7 +173,7 @@ class FFmpegExtractAudioPP(FFmpegPostProcessor):
 
     def get_audio_codec(self, path):
 
-        if not self.probe_executable:
+        if not self.probe_available:
             raise PostProcessingError('ffprobe or avprobe not found. Please install one.')
         try:
             cmd = [
@@ -269,20 +273,17 @@ class FFmpegExtractAudioPP(FFmpegPostProcessor):
             else:
                 self._downloader.to_screen('[' + self.basename + '] Destination: ' + new_path)
                 self.run_ffmpeg(path, new_path, acodec, more_opts)
-        except:
-            etype, e, tb = sys.exc_info()
-            if isinstance(e, AudioConversionError):
-                msg = 'audio conversion failed: ' + e.msg
-            else:
-                msg = 'error running ' + self.basename
-            raise PostProcessingError(msg)
+        except AudioConversionError as e:
+            raise PostProcessingError(
+                'audio conversion failed: ' + e.msg)
+        except Exception:
+            raise PostProcessingError('error running ' + self.basename)
 
         # Try to update the date time for extracted audio file.
         if information.get('filetime') is not None:
-            try:
-                os.utime(encodeFilename(new_path), (time.time(), information['filetime']))
-            except:
-                self._downloader.report_warning('Cannot update utime of audio file')
+            self.try_utime(
+                new_path, time.time(), information['filetime'],
+                errnote='Cannot update utime of audio file')
 
         information['filepath'] = new_path
         return self._nopostoverwrites, information
@@ -545,7 +546,9 @@ class FFmpegMetadataPP(FFmpegPostProcessor):
             metadata['title'] = info['title']
         if info.get('upload_date') is not None:
             metadata['date'] = info['upload_date']
-        if info.get('uploader') is not None:
+        if info.get('artist') is not None:
+            metadata['artist'] = info['artist']
+        elif info.get('uploader') is not None:
             metadata['artist'] = info['uploader']
         elif info.get('uploader_id') is not None:
             metadata['artist'] = info['uploader_id']
@@ -554,6 +557,8 @@ class FFmpegMetadataPP(FFmpegPostProcessor):
             metadata['comment'] = info['description']
         if info.get('webpage_url') is not None:
             metadata['purl'] = info['webpage_url']
+        if info.get('album') is not None:
+            metadata['album'] = info['album']
 
         if not metadata:
             self._downloader.to_screen('[ffmpeg] There isn\'t any metadata to add')

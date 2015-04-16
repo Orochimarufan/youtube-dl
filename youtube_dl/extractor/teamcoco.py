@@ -1,10 +1,14 @@
+# -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
 import base64
 import re
 
 from .common import InfoExtractor
-from ..utils import qualities
+from ..utils import (
+    ExtractorError,
+    qualities,
+)
 
 
 class TeamcocoIE(InfoExtractor):
@@ -18,6 +22,7 @@ class TeamcocoIE(InfoExtractor):
                 'ext': 'mp4',
                 'title': 'Conan Becomes A Mary Kay Beauty Consultant',
                 'description': 'Mary Kay is perhaps the most trusted name in female beauty, so of course Conan is a natural choice to sell their products.',
+                'duration': 504,
                 'age_limit': 0,
             }
         }, {
@@ -28,7 +33,19 @@ class TeamcocoIE(InfoExtractor):
                 'ext': 'mp4',
                 'description': 'Louis C.K. got starstruck by George W. Bush, so what? Part one.',
                 'title': 'Louis C.K. Interview Pt. 1 11/3/11',
+                'duration': 288,
                 'age_limit': 0,
+            }
+        }, {
+            'url': 'http://teamcoco.com/video/timothy-olyphant-drinking-whiskey',
+            'info_dict': {
+                'id': '88748',
+                'ext': 'mp4',
+                'title': 'Timothy Olyphant Raises A Toast To “Justified”',
+                'description': 'md5:15501f23f020e793aeca761205e42c24',
+            },
+            'params': {
+                'skip_download': True,  # m3u8 downloads
             }
         }
     ]
@@ -49,35 +66,50 @@ class TeamcocoIE(InfoExtractor):
             video_id = self._html_search_regex(
                 self._VIDEO_ID_REGEXES, webpage, 'video id')
 
-        embed_url = 'http://teamcoco.com/embed/v/%s' % video_id
-        embed = self._download_webpage(
-            embed_url, video_id, 'Downloading embed page')
+        preload = None
+        preloads = re.findall(r'"preload":\s*"([^"]+)"', webpage)
+        if preloads:
+            preload = max([(len(p), p) for p in preloads])[1]
 
-        encoded_data = self._search_regex(
-            r'"preload"\s*:\s*"([^"]+)"', embed, 'encoded data')
+        if not preload:
+            preload = ''.join(re.findall(r'this\.push\("([^"]+)"\);', webpage))
+
+        if not preload:
+            preload = self._html_search_regex([
+                r'player,\[?"([^"]+)"\]?', r'player.init\(\[?"([^"]+)"\]?\)'
+            ], webpage.replace('","', ''), 'preload data', default=None)
+
+        if not preload:
+            raise ExtractorError(
+                'Preload information could not be extracted', expected=True)
+
         data = self._parse_json(
-            base64.b64decode(encoded_data.encode('ascii')).decode('utf-8'), video_id)
+            base64.b64decode(preload.encode('ascii')).decode('utf-8'), video_id)
 
         formats = []
         get_quality = qualities(['500k', '480p', '1000k', '720p', '1080p'])
         for filed in data['files']:
-            m_format = re.search(r'(\d+(k|p))\.mp4', filed['url'])
-            if m_format is not None:
-                format_id = m_format.group(1)
+            if filed['type'] == 'hls':
+                formats.extend(self._extract_m3u8_formats(
+                    filed['url'], video_id, ext='mp4'))
             else:
-                format_id = filed['bitrate']
-            tbr = (
-                int(filed['bitrate'])
-                if filed['bitrate'].isdigit()
-                else None)
+                m_format = re.search(r'(\d+(k|p))\.mp4', filed['url'])
+                if m_format is not None:
+                    format_id = m_format.group(1)
+                else:
+                    format_id = filed['bitrate']
+                tbr = (
+                    int(filed['bitrate'])
+                    if filed['bitrate'].isdigit()
+                    else None)
 
-            formats.append({
-                'url': filed['url'],
-                'ext': 'mp4',
-                'tbr': tbr,
-                'format_id': format_id,
-                'quality': get_quality(format_id),
-            })
+                formats.append({
+                    'url': filed['url'],
+                    'ext': 'mp4',
+                    'tbr': tbr,
+                    'format_id': format_id,
+                    'quality': get_quality(format_id),
+                })
 
         self._sort_formats(formats)
 
@@ -88,5 +120,6 @@ class TeamcocoIE(InfoExtractor):
             'title': data['title'],
             'thumbnail': data.get('thumb', {}).get('href'),
             'description': data.get('teaser'),
+            'duration': data.get('duration'),
             'age_limit': self._family_friendly_search(webpage),
         }

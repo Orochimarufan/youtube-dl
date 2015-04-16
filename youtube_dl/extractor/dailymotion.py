@@ -25,8 +25,7 @@ class DailymotionBaseInfoExtractor(InfoExtractor):
     def _build_request(url):
         """Build a request with the family filter disabled"""
         request = compat_urllib_request.Request(url)
-        request.add_header('Cookie', 'family_filter=off')
-        request.add_header('Cookie', 'ff=off')
+        request.add_header('Cookie', 'family_filter=off; ff=off')
         return request
 
 
@@ -46,13 +45,13 @@ class DailymotionIE(DailymotionBaseInfoExtractor):
 
     _TESTS = [
         {
-            'url': 'http://www.dailymotion.com/video/x33vw9_tutoriel-de-youtubeur-dl-des-video_tech',
-            'md5': '392c4b85a60a90dc4792da41ce3144eb',
+            'url': 'https://www.dailymotion.com/video/x2iuewm_steam-machine-models-pricing-listed-on-steam-store-ign-news_videogames',
+            'md5': '2137c41a8e78554bb09225b8eb322406',
             'info_dict': {
-                'id': 'x33vw9',
+                'id': 'x2iuewm',
                 'ext': 'mp4',
-                'uploader': 'Amphora Alex and Van .',
-                'title': 'Tutoriel de Youtubeur"DL DES VIDEO DE YOUTUBE"',
+                'uploader': 'IGN',
+                'title': 'Steam Machine Models, Pricing Listed on Steam Store - IGN News',
             }
         },
         # Vevo video
@@ -112,8 +111,9 @@ class DailymotionIE(DailymotionBaseInfoExtractor):
             video_upload_date = mobj.group(3) + mobj.group(2) + mobj.group(1)
 
         embed_url = 'http://www.dailymotion.com/embed/video/%s' % video_id
-        embed_page = self._download_webpage(embed_url, video_id,
-                                            'Downloading embed page')
+        embed_request = self._build_request(embed_url)
+        embed_page = self._download_webpage(
+            embed_request, video_id, 'Downloading embed page')
         info = self._search_regex(r'var info = ({.*?}),$', embed_page,
                                   'video info', flags=re.MULTILINE)
         info = json.loads(info)
@@ -224,7 +224,7 @@ class DailymotionPlaylistIE(DailymotionBaseInfoExtractor):
 
 class DailymotionUserIE(DailymotionPlaylistIE):
     IE_NAME = 'dailymotion:user'
-    _VALID_URL = r'https?://(?:www\.)?dailymotion\.[a-z]{2,3}/user/(?P<user>[^/]+)'
+    _VALID_URL = r'https?://(?:www\.)?dailymotion\.[a-z]{2,3}/(?:old/)?user/(?P<user>[^/]+)'
     _PAGE_TEMPLATE = 'http://www.dailymotion.com/user/%s/%s'
     _TESTS = [{
         'url': 'https://www.dailymotion.com/user/nqtv',

@@ -180,7 +180,7 @@ class SoundcloudIE(InfoExtractor):
                     'format_id': key,
                     'url': url,
                     'play_path': 'mp3:' + path,
-                    'ext': ext,
+                    'ext': 'flv',
                     'vcodec': 'none',
                 })
 
@@ -200,8 +200,9 @@ class SoundcloudIE(InfoExtractor):
                 if f['format_id'].startswith('rtmp'):
                     f['protocol'] = 'rtmp'
 
-            self._sort_formats(formats)
-            result['formats'] = formats
+        self._check_formats(formats, track_id)
+        self._sort_formats(formats)
+        result['formats'] = formats
 
         return result
 
@@ -241,7 +242,7 @@ class SoundcloudIE(InfoExtractor):
 
 
 class SoundcloudSetIE(SoundcloudIE):
-    _VALID_URL = r'https?://(?:www\.)?soundcloud\.com/(?P<uploader>[\w\d-]+)/sets/(?P<slug_title>[\w\d-]+)(?:/(?P<token>[^?/]+))?'
+    _VALID_URL = r'https?://(?:(?:www|m)\.)?soundcloud\.com/(?P<uploader>[\w\d-]+)/sets/(?P<slug_title>[\w\d-]+)(?:/(?P<token>[^?/]+))?'
     IE_NAME = 'soundcloud:set'
     _TESTS = [{
         'url': 'https://soundcloud.com/the-concept-band/sets/the-royal-concept-ep',
@@ -286,7 +287,7 @@ class SoundcloudSetIE(SoundcloudIE):
 
 
 class SoundcloudUserIE(SoundcloudIE):
-    _VALID_URL = r'https?://(www\.)?soundcloud\.com/(?P<user>[^/]+)/?((?P<rsrc>tracks|likes)/?)?(\?.*)?$'
+    _VALID_URL = r'https?://(?:(?:www|m)\.)?soundcloud\.com/(?P<user>[^/]+)/?((?P<rsrc>tracks|likes)/?)?(\?.*)?$'
     IE_NAME = 'soundcloud:user'
     _TESTS = [{
         'url': 'https://soundcloud.com/the-concept-band',

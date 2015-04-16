@@ -9,6 +9,7 @@ import codecs
 import io
 import os
 import random
+import shlex
 import sys
 
 
@@ -188,10 +189,6 @@ def _real_main(argv=None):
     if opts.allsubtitles and not opts.writeautomaticsub:
         opts.writesubtitles = True
 
-    if sys.version_info < (3,):
-        # In Python 2, sys.argv is a bytestring (also note http://bugs.python.org/issue2128 for Windows systems)
-        if opts.outtmpl is not None:
-            opts.outtmpl = opts.outtmpl.decode(preferredencoding())
     outtmpl = ((opts.outtmpl is not None and opts.outtmpl) or
                (opts.format == '-1' and opts.usetitle and '%(title)s-%(id)s-%(format)s.%(ext)s') or
                (opts.format == '-1' and '%(id)s-%(format)s.%(ext)s') or
@@ -233,6 +230,11 @@ def _real_main(argv=None):
         })
     else:
         # Add the metadata pp first, the other pps will copy it
+        if opts.metafromtitle:
+            postprocessors.append({
+                'key': 'MetadataFromTitle',
+                'titleformat': opts.metafromtitle
+            })
         if opts.addmetadata:
             postprocessors.append({'key': 'FFmpegMetadata'})
         if opts.extractaudio:
@@ -255,7 +257,6 @@ def _real_main(argv=None):
         if opts.embedsubtitles:
             postprocessors.append({
                 'key': 'FFmpegEmbedSubtitle',
-                'subtitlesformat': opts.subtitlesformat,
             })
     if opts.xattrs:
         postprocessors.append({'key': 'XAttrMetadata'})
@@ -277,6 +278,9 @@ def _real_main(argv=None):
             xattr  # Confuse flake8
         except ImportError:
             parser.error('setting filesize xattr requested but python-xattr is not available')
+    external_downloader_args = None
+    if opts.external_downloader_args:
+        external_downloader_args = shlex.split(opts.external_downloader_args)
     match_filter = (
         None if opts.match_filter is None
         else match_filter_func(opts.match_filter))
@@ -382,6 +386,8 @@ def _real_main(argv=None):
         'no_color': opts.no_color,
         'ffmpeg_location': opts.ffmpeg_location,
         'hls_prefer_native': opts.hls_prefer_native,
+        'external_downloader_args': external_downloader_args,
+        'cn_verification_proxy': opts.cn_verification_proxy,
     }
 
     with YoutubeDL(ydl_opts) as ydl:
