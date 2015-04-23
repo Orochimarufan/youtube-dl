@@ -495,7 +495,23 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
                 'uploader': '孫艾倫',
                 'title': '[A-made] 變態妍字幕版 太妍 我就是這樣的人',
             },
-        }
+        },
+        # url_encoded_fmt_stream_map is empty string
+        {
+            'url': 'qEJwOuvDf7I',
+            'info_dict': {
+                'id': 'qEJwOuvDf7I',
+                'ext': 'mp4',
+                'title': 'Обсуждение судебной практики по выборам 14 сентября 2014 года в Санкт-Петербурге',
+                'description': '',
+                'upload_date': '20150404',
+                'uploader_id': 'spbelect',
+                'uploader': 'Наблюдатели Петербурга',
+            },
+            'params': {
+                'skip_download': 'requires avconv',
+            }
+        },
     ]
 
     def __init__(self, *args, **kwargs):
@@ -772,33 +788,41 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
             errnote='Could not download DASH manifest')
 
         formats = []
-        for r in dash_doc.findall('.//{urn:mpeg:DASH:schema:MPD:2011}Representation'):
-            url_el = r.find('{urn:mpeg:DASH:schema:MPD:2011}BaseURL')
-            if url_el is None:
-                continue
-            format_id = r.attrib['id']
-            video_url = url_el.text
-            filesize = int_or_none(url_el.attrib.get('{http://youtube.com/yt/2012/10/10}contentLength'))
-            f = {
-                'format_id': format_id,
-                'url': video_url,
-                'width': int_or_none(r.attrib.get('width')),
-                'height': int_or_none(r.attrib.get('height')),
-                'tbr': int_or_none(r.attrib.get('bandwidth'), 1000),
-                'asr': int_or_none(r.attrib.get('audioSamplingRate')),
-                'filesize': filesize,
-                'fps': int_or_none(r.attrib.get('frameRate')),
-            }
-            try:
-                existing_format = next(
-                    fo for fo in formats
-                    if fo['format_id'] == format_id)
-            except StopIteration:
-                full_info = self._formats.get(format_id, {}).copy()
-                full_info.update(f)
-                formats.append(full_info)
-            else:
-                existing_format.update(f)
+        for a in dash_doc.findall('.//{urn:mpeg:DASH:schema:MPD:2011}AdaptationSet'):
+            mime_type = a.attrib.get('mimeType')
+            for r in a.findall('{urn:mpeg:DASH:schema:MPD:2011}Representation'):
+                url_el = r.find('{urn:mpeg:DASH:schema:MPD:2011}BaseURL')
+                if url_el is None:
+                    continue
+                if mime_type == 'text/vtt':
+                    # TODO implement WebVTT downloading
+                    pass
+                elif mime_type.startswith('audio/') or mime_type.startswith('video/'):
+                    format_id = r.attrib['id']
+                    video_url = url_el.text
+                    filesize = int_or_none(url_el.attrib.get('{http://youtube.com/yt/2012/10/10}contentLength'))
+                    f = {
+                        'format_id': format_id,
+                        'url': video_url,
+                        'width': int_or_none(r.attrib.get('width')),
+                        'height': int_or_none(r.attrib.get('height')),
+                        'tbr': int_or_none(r.attrib.get('bandwidth'), 1000),
+                        'asr': int_or_none(r.attrib.get('audioSamplingRate')),
+                        'filesize': filesize,
+                        'fps': int_or_none(r.attrib.get('frameRate')),
+                    }
+                    try:
+                        existing_format = next(
+                            fo for fo in formats
+                            if fo['format_id'] == format_id)
+                    except StopIteration:
+                        full_info = self._formats.get(format_id, {}).copy()
+                        full_info.update(f)
+                        formats.append(full_info)
+                    else:
+                        existing_format.update(f)
+                else:
+                    self.report_warning('Unknown MIME type %s in DASH manifest' % mime_type)
         return formats
 
     def _real_extract(self, url):
@@ -855,7 +879,7 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
                 args = ytplayer_config['args']
                 # Convert to the same format returned by compat_parse_qs
                 video_info = dict((k, [v]) for k, v in args.items())
-                if 'url_encoded_fmt_stream_map' not in args:
+                if not args.get('url_encoded_fmt_stream_map'):
                     raise ValueError('No stream_map present')  # caught below
             except ValueError:
                 # We fallback to the get_video_info pages (used by the embed page)
@@ -1263,27 +1287,7 @@ class YoutubePlaylistIE(YoutubeBaseInfoExtractor):
 
         return self.playlist_result(url_results, playlist_id, title)
 
-    def _real_extract(self, url):
-        # Extract playlist id
-        mobj = re.match(self._VALID_URL, url)
-        if mobj is None:
-            raise ExtractorError('Invalid URL: %s' % url)
-        playlist_id = mobj.group(1) or mobj.group(2)
-
-        # Check if it's a video-specific URL
-        query_dict = compat_urlparse.parse_qs(compat_urlparse.urlparse(url).query)
-        if 'v' in query_dict:
-            video_id = query_dict['v'][0]
-            if self._downloader.params.get('noplaylist'):
-                self.to_screen('Downloading just video %s because of --no-playlist' % video_id)
-                return self.url_result(video_id, 'Youtube', video_id=video_id)
-            else:
-                self.to_screen('Downloading playlist %s - add --no-playlist to just download video %s' % (playlist_id, video_id))
-
-        if playlist_id.startswith('RD') or playlist_id.startswith('UL'):
-            # Mixes require a custom extraction process
-            return self._extract_mix(playlist_id)
-
+    def _extract_playlist(self, playlist_id):
         url = self._TEMPLATE_URL % playlist_id
         page = self._download_webpage(url, playlist_id)
         more_widget_html = content_html = page
@@ -1327,6 +1331,29 @@ class YoutubePlaylistIE(YoutubeBaseInfoExtractor):
         url_results = self._ids_to_results(ids)
         return self.playlist_result(url_results, playlist_id, playlist_title)
 
+    def _real_extract(self, url):
+        # Extract playlist id
+        mobj = re.match(self._VALID_URL, url)
+        if mobj is None:
+            raise ExtractorError('Invalid URL: %s' % url)
+        playlist_id = mobj.group(1) or mobj.group(2)
+
+        # Check if it's a video-specific URL
+        query_dict = compat_urlparse.parse_qs(compat_urlparse.urlparse(url).query)
+        if 'v' in query_dict:
+            video_id = query_dict['v'][0]
+            if self._downloader.params.get('noplaylist'):
+                self.to_screen('Downloading just video %s because of --no-playlist' % video_id)
+                return self.url_result(video_id, 'Youtube', video_id=video_id)
+            else:
+                self.to_screen('Downloading playlist %s - add --no-playlist to just download video %s' % (playlist_id, video_id))
+
+        if playlist_id.startswith('RD') or playlist_id.startswith('UL'):
+            # Mixes require a custom extraction process
+            return self._extract_mix(playlist_id)
+
+        return self._extract_playlist(playlist_id)
+
 
 class YoutubeChannelIE(InfoExtractor):
     IE_DESC = 'YouTube.com channels'
@@ -1343,15 +1370,22 @@ class YoutubeChannelIE(InfoExtractor):
 
     def extract_videos_from_page(self, page):
         ids_in_page = []
-        for mobj in re.finditer(r'href="/watch\?v=([0-9A-Za-z_-]+)&?', page):
-            if mobj.group(1) not in ids_in_page:
-                ids_in_page.append(mobj.group(1))
-        return ids_in_page
+        titles_in_page = []
+        for mobj in re.finditer(r'(?:title="(?P<title>[^"]+)"[^>]+)?href="/watch\?v=(?P<id>[0-9A-Za-z_-]+)&?', page):
+            video_id = mobj.group('id')
+            video_title = unescapeHTML(mobj.group('title'))
+            try:
+                idx = ids_in_page.index(video_id)
+                if video_title and not titles_in_page[idx]:
+                    titles_in_page[idx] = video_title
+            except ValueError:
+                ids_in_page.append(video_id)
+                titles_in_page.append(video_title)
+        return zip(ids_in_page, titles_in_page)
 
     def _real_extract(self, url):
         channel_id = self._match_id(url)
 
-        video_ids = []
         url = 'https://www.youtube.com/channel/%s/videos' % channel_id
         channel_page = self._download_webpage(url, channel_id)
         autogenerated = re.search(r'''(?x)
@@ -1363,20 +1397,21 @@ class YoutubeChannelIE(InfoExtractor):
         if autogenerated:
             # The videos are contained in a single page
             # the ajax pages can't be used, they are empty
-            video_ids = self.extract_videos_from_page(channel_page)
             entries = [
-                self.url_result(video_id, 'Youtube', video_id=video_id)
-                for video_id in video_ids]
+                self.url_result(
+                    video_id, 'Youtube', video_id=video_id,
+                    video_title=video_title)
+                for video_id, video_title in self.extract_videos_from_page(channel_page)]
             return self.playlist_result(entries, channel_id)
 
         def _entries():
             more_widget_html = content_html = channel_page
             for pagenum in itertools.count(1):
 
-                ids_in_page = self.extract_videos_from_page(content_html)
-                for video_id in ids_in_page:
+                for video_id, video_title in self.extract_videos_from_page(content_html):
                     yield self.url_result(
-                        video_id, 'Youtube', video_id=video_id)
+                        video_id, 'Youtube', video_id=video_id,
+                        video_title=video_title)
 
                 mobj = re.search(
                     r'data-uix-load-more-href="/?(?P<more>[^"]+)"',
@@ -1643,21 +1678,26 @@ class YoutubeFeedsInfoExtractor(YoutubeBaseInfoExtractor):
 
 
 class YoutubeRecommendedIE(YoutubeFeedsInfoExtractor):
+    IE_NAME = 'youtube:recommended'
     IE_DESC = 'YouTube.com recommended videos, ":ytrec" for short (requires authentication)'
     _VALID_URL = r'https?://www\.youtube\.com/feed/recommended|:ytrec(?:ommended)?'
     _FEED_NAME = 'recommended'
     _PLAYLIST_TITLE = 'Youtube Recommended videos'
 
 
-class YoutubeWatchLaterIE(YoutubeFeedsInfoExtractor):
+class YoutubeWatchLaterIE(YoutubePlaylistIE):
+    IE_NAME = 'youtube:watchlater'
     IE_DESC = 'Youtube watch later list, ":ytwatchlater" for short (requires authentication)'
-    _VALID_URL = r'https?://www\.youtube\.com/feed/watch_later|:ytwatchlater'
-    _FEED_NAME = 'watch_later'
-    _PLAYLIST_TITLE = 'Youtube Watch Later'
-    _PERSONAL_FEED = True
+    _VALID_URL = r'https?://www\.youtube\.com/(?:feed/watch_later|playlist\?list=WL)|:ytwatchlater'
+
+    _TESTS = []  # override PlaylistIE tests
+
+    def _real_extract(self, url):
+        return self._extract_playlist('WL')
 
 
 class YoutubeHistoryIE(YoutubeFeedsInfoExtractor):
+    IE_NAME = 'youtube:history'
     IE_DESC = 'Youtube watch history, ":ythistory" for short (requires authentication)'
     _VALID_URL = 'https?://www\.youtube\.com/feed/history|:ythistory'
     _FEED_NAME = 'history'

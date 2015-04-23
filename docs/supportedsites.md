@@ -2,6 +2,8 @@
  - **1tv**: Первый канал
  - **1up.com**
  - **220.ro**
+ - **22tracks:genre**
+ - **22tracks:track**
  - **24video**
  - **3sat**
  - **4tube**
@@ -47,6 +49,7 @@
  - **Bandcamp**
  - **Bandcamp:album**
  - **bbc.co.uk**: BBC iPlayer
+ - **BeatportPro**
  - **Beeg**
  - **BehindKink**
  - **Bet**
@@ -108,14 +111,17 @@
  - **DctpTv**
  - **DeezerPlaylist**
  - **defense.gouv.fr**
+ - **DHM**: Filmarchiv - Deutsches Historisches Museum
  - **Discovery**
  - **divxstage**: DivxStage
  - **Dotsub**
+ - **DouyuTV**
  - **DRBonanza**
  - **Dropbox**
  - **DrTuber**
  - **DRTV**
  - **Dump**
+ - **Dumpert**
  - **dvtv**: http://video.aktualne.cz/
  - **EaglePlatform**
  - **EbaumsWorld**
@@ -145,6 +151,7 @@
  - **Firstpost**
  - **Flickr**
  - **Folketinget**: Folketinget (ft.dk; Danish parliament)
+ - **FootyRoom**
  - **Foxgay**
  - **FoxNews**
  - **france2.fr:generation-quoi**
@@ -159,6 +166,7 @@
  - **Gamekings**
  - **GameOne**
  - **gameone:playlist**
+ - **Gamersyde**
  - **GameSpot**
  - **GameStar**
  - **Gametrailers**
@@ -213,6 +221,7 @@
  - **jpopsuki.tv**
  - **Jukebox**
  - **Kaltura**
+ - **KanalPlay**: Kanal 5/9/11 Play
  - **Kankan**
  - **Karaoketv**
  - **keek**
@@ -227,6 +236,7 @@
  - **Letv**
  - **LetvPlaylist**
  - **LetvTv**
+ - **Libsyn**
  - **lifenews**: LIFE | NEWS
  - **LiveLeak**
  - **livestream**
@@ -246,6 +256,7 @@
  - **Mgoon**
  - **Minhateca**
  - **MinistryGrid**
+ - **miomio.tv**
  - **mitele.es**
  - **mixcloud**
  - **MLB**
@@ -279,6 +290,8 @@
  - **NBA**
  - **NBC**
  - **NBCNews**
+ - **NBCSports**
+ - **NBCSportsVPlayer**
  - **ndr**: NDR.de - Mediathek
  - **NDTV**
  - **NerdCubedFeed**
@@ -306,6 +319,7 @@
  - **npo.nl:radio**
  - **npo.nl:radio:fragment**
  - **NRK**
+ - **NRKPlaylist**
  - **NRKTV**
  - **ntv.ru**
  - **Nuvid**
@@ -338,7 +352,9 @@
  - **PornHub**
  - **PornHubPlaylist**
  - **Pornotube**
+ - **PornoVoisines**
  - **PornoXO**
+ - **PrimeShareTV**
  - **PromptFile**
  - **prosiebensat1**: ProSiebenSat.1 Digital
  - **Puls4**
@@ -348,6 +364,7 @@
  - **radio.de**
  - **radiobremen**
  - **radiofrance**
+ - **RadioJavan**
  - **Rai**
  - **RBMARadio**
  - **RedTube**
@@ -364,6 +381,7 @@
  - **RTP**
  - **RTS**: RTS.ch
  - **rtve.es:alacarta**: RTVE a la carta
+ - **rtve.es:infantil**: RTVE infantil
  - **rtve.es:live**: RTVE.es live streams
  - **RUHD**
  - **rutube**: Rutube videos
@@ -372,6 +390,8 @@
  - **rutube:movie**: Rutube movies
  - **rutube:person**: Rutube person videos
  - **RUTV**: RUTV.RU
+ - **safari**: safaribooksonline.com online video
+ - **safari:course**: safaribooksonline.com online courses
  - **Sandia**: Sandia National Laboratories
  - **Sapo**: SAPO Vídeos
  - **savefrom.net**
@@ -405,6 +425,7 @@
  - **southpark.cc.com**
  - **southpark.de**
  - **Space**
+ - **SpankBang**
  - **Spankwire**
  - **Spiegel**
  - **Spiegel:Article**: Articles on spiegel.de
@@ -414,6 +435,7 @@
  - **SportBox**
  - **SportDeutschland**
  - **SRMediathek**: Saarländischer Rundfunk
+ - **SSA**
  - **stanfordoc**: Stanford Open ClassRoom
  - **Steam**
  - **streamcloud.eu**
@@ -483,13 +505,17 @@
  - **Ubu**
  - **udemy**
  - **udemy:course**
+ - **UDNEmbed**
+ - **Ultimedia**
  - **Unistra**
  - **Urort**: NRK P3 Urørt
  - **ustream**
  - **ustream:channel**
+ - **Varzesh3**
  - **Vbox7**
  - **VeeHD**
  - **Veoh**
+ - **Vessel**
  - **Vesti**: Вести.Ru
  - **Vevo**
  - **VGTV**
@@ -510,6 +536,7 @@
  - **Vidzi**
  - **vier**
  - **vier:videos**
+ - **Viewster**
  - **viki**
  - **vimeo**
  - **vimeo:album**
@@ -556,6 +583,9 @@
  - **XXXYMovies**
  - **Yahoo**: Yahoo screen and movies
  - **Yam**
+ - **yandexmusic:album**: Яндекс.Музыка - Альбом
+ - **yandexmusic:playlist**: Яндекс.Музыка - Плейлист
+ - **yandexmusic:track**: Яндекс.Музыка - Трек
  - **YesJapan**
  - **Ynet**
  - **YouJizz**
@@ -574,7 +604,7 @@
  - **youtube:show**: YouTube.com (multi-season) shows
  - **youtube:subscriptions**: YouTube.com subscriptions feed, "ytsubs" keyword (requires authentication)
  - **youtube:user**: YouTube.com user videos (URL or "ytuser" keyword)
- - **youtube:watch_later**: Youtube watch later list, ":ytwatchlater" for short (requires authentication)
+ - **youtube:watchlater**: Youtube watch later list, ":ytwatchlater" for short (requires authentication)
  - **Zapiks**
  - **ZDF**
  - **ZDFChannel**

@@ -324,7 +324,7 @@ class InfoExtractor(object):
                 self._downloader.report_warning(errmsg)
                 return False
 
-    def _download_webpage_handle(self, url_or_request, video_id, note=None, errnote=None, fatal=True):
+    def _download_webpage_handle(self, url_or_request, video_id, note=None, errnote=None, fatal=True, encoding=None):
         """ Returns a tuple (page content as string, URL handle) """
         # Strip hashes from the URL (#1038)
         if isinstance(url_or_request, (compat_str, str)):
@@ -334,14 +334,11 @@ class InfoExtractor(object):
         if urlh is False:
             assert not fatal
             return False
-        content = self._webpage_read_content(urlh, url_or_request, video_id, note, errnote, fatal)
+        content = self._webpage_read_content(urlh, url_or_request, video_id, note, errnote, fatal, encoding=encoding)
         return (content, urlh)
 
-    def _webpage_read_content(self, urlh, url_or_request, video_id, note=None, errnote=None, fatal=True, prefix=None):
-        content_type = urlh.headers.get('Content-Type', '')
-        webpage_bytes = urlh.read()
-        if prefix is not None:
-            webpage_bytes = prefix + webpage_bytes
+    @staticmethod
+    def _guess_encoding_from_content(content_type, webpage_bytes):
         m = re.match(r'[a-zA-Z0-9_.-]+/[a-zA-Z0-9_.-]+\s*;\s*charset=(.+)', content_type)
         if m:
             encoding = m.group(1)
@@ -354,6 +351,16 @@ class InfoExtractor(object):
                 encoding = 'utf-16'
             else:
                 encoding = 'utf-8'
+
+        return encoding
+
+    def _webpage_read_content(self, urlh, url_or_request, video_id, note=None, errnote=None, fatal=True, prefix=None, encoding=None):
+        content_type = urlh.headers.get('Content-Type', '')
+        webpage_bytes = urlh.read()
+        if prefix is not None:
+            webpage_bytes = prefix + webpage_bytes
+        if not encoding:
+            encoding = self._guess_encoding_from_content(content_type, webpage_bytes)
         if self._downloader.params.get('dump_intermediate_pages', False):
             try:
                 url = url_or_request.get_full_url()
@@ -410,13 +417,13 @@ class InfoExtractor(object):
 
         return content
 
-    def _download_webpage(self, url_or_request, video_id, note=None, errnote=None, fatal=True, tries=1, timeout=5):
+    def _download_webpage(self, url_or_request, video_id, note=None, errnote=None, fatal=True, tries=1, timeout=5, encoding=None):
         """ Returns the data of the page as a string """
         success = False
         try_count = 0
         while success is False:
             try:
-                res = self._download_webpage_handle(url_or_request, video_id, note, errnote, fatal)
+                res = self._download_webpage_handle(url_or_request, video_id, note, errnote, fatal, encoding=encoding)
                 success = True
             except compat_http_client.IncompleteRead as e:
                 try_count += 1
@@ -431,10 +438,10 @@ class InfoExtractor(object):
 
     def _download_xml(self, url_or_request, video_id,
                       note='Downloading XML', errnote='Unable to download XML',
-                      transform_source=None, fatal=True):
+                      transform_source=None, fatal=True, encoding=None):
         """Return the xml as an xml.etree.ElementTree.Element"""
         xml_string = self._download_webpage(
-            url_or_request, video_id, note, errnote, fatal=fatal)
+            url_or_request, video_id, note, errnote, fatal=fatal, encoding=encoding)
         if xml_string is False:
             return xml_string
         if transform_source:
@@ -445,9 +452,10 @@ class InfoExtractor(object):
                        note='Downloading JSON metadata',
                        errnote='Unable to download JSON metadata',
                        transform_source=None,
-                       fatal=True):
+                       fatal=True, encoding=None):
         json_string = self._download_webpage(
-            url_or_request, video_id, note, errnote, fatal=fatal)
+            url_or_request, video_id, note, errnote, fatal=fatal,
+            encoding=encoding)
         if (not fatal) and json_string is False:
             return None
         return self._parse_json(
@@ -492,7 +500,7 @@ class InfoExtractor(object):
 
     # Methods for following #608
     @staticmethod
-    def url_result(url, ie=None, video_id=None):
+    def url_result(url, ie=None, video_id=None, video_title=None):
         """Returns a url that points to a page that should be processed"""
         # TODO: ie should be the class used for getting the info
         video_info = {'_type': 'url',
@@ -500,6 +508,8 @@ class InfoExtractor(object):
                       'ie_key': ie}
         if video_id is not None:
             video_info['id'] = video_id
+        if video_title is not None:
+            video_info['title'] = video_title
         return video_info
 
     @staticmethod
@@ -822,7 +832,7 @@ class InfoExtractor(object):
                                 (media_el.attrib.get('href') or media_el.attrib.get('url')))
             tbr = int_or_none(media_el.attrib.get('bitrate'))
             formats.append({
-                'format_id': '-'.join(filter(None, [f4m_id, 'f4m-%d' % (i if tbr is None else tbr)])),
+                'format_id': '-'.join(filter(None, [f4m_id, compat_str(i if tbr is None else tbr)])),
                 'url': manifest_url,
                 'ext': 'flv',
                 'tbr': tbr,
@@ -1061,6 +1071,9 @@ class InfoExtractor(object):
 
     def _get_automatic_captions(self, *args, **kwargs):
         raise NotImplementedError("This method must be implemented by subclasses")
+
+    def _subtitles_timecode(self, seconds):
+        return '%02d:%02d:%02d.%03d' % (seconds / 3600, (seconds % 3600) / 60, seconds % 60, (seconds % 1) * 1000)
 
 
 class SearchInfoExtractor(InfoExtractor):

@@ -323,8 +323,10 @@ class YoutubeDL(object):
                 'Set the LC_ALL environment variable to fix this.')
             self.params['restrictfilenames'] = True
 
-        if '%(stitle)s' in self.params.get('outtmpl', ''):
-            self.report_warning('%(stitle)s is deprecated. Use the %(title)s and the --restrict-filenames flag(which also secures %(uploader)s et al) instead.')
+        if isinstance(params.get('outtmpl'), bytes):
+            self.report_warning(
+                'Parameter outtmpl is bytes, but should be a unicode string. '
+                'Put  from __future__ import unicode_literals  at the top of your code file or consider switching to Python 3.x.')
 
         self._setup_opener()
 
@@ -630,7 +632,7 @@ class YoutubeDL(object):
         Returns a list with a dictionary for each video we find.
         If 'download', also downloads the videos.
         extra_info is a dict containing the extra values to add to each result
-         '''
+        '''
 
         if ie_key:
             ies = [self.get_info_extractor(ie_key)]
@@ -917,6 +919,11 @@ class YoutubeDL(object):
         if format_spec == 'best' or format_spec is None:
             return available_formats[-1]
         elif format_spec == 'worst':
+            audiovideo_formats = [
+                f for f in available_formats
+                if f.get('vcodec') != 'none' and f.get('acodec') != 'none']
+            if audiovideo_formats:
+                return audiovideo_formats[0]
             return available_formats[0]
         elif format_spec == 'bestaudio':
             audio_formats = [
@@ -1086,8 +1093,7 @@ class YoutubeDL(object):
         if req_format is None:
             req_format = 'best'
         formats_to_download = []
-        # The -1 is for supporting YoutubeIE
-        if req_format in ('-1', 'all'):
+        if req_format == 'all':
             formats_to_download = formats
         else:
             for rfstr in req_format.split(','):
@@ -1213,9 +1219,6 @@ class YoutubeDL(object):
         info_dict['fulltitle'] = info_dict['title']
         if len(info_dict['title']) > 200:
             info_dict['title'] = info_dict['title'][:197] + '...'
-
-        # Keep for backwards compatibility
-        info_dict['stitle'] = info_dict['title']
 
         if 'format' not in info_dict:
             info_dict['format'] = info_dict['ext']
@@ -1713,10 +1716,10 @@ class YoutubeDL(object):
             out = out.decode().strip()
             if re.match('[0-9a-f]+', out):
                 self._write_string('[debug] Git HEAD: ' + out + '\n')
-        except:
+        except Exception:
             try:
                 sys.exc_clear()
-            except:
+            except Exception:
                 pass
         self._write_string('[debug] Python version %s - %s\n' % (
             platform.python_version(), platform_name()))

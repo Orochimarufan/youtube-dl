@@ -24,6 +24,7 @@ from youtube_dl.utils import (
     encodeFilename,
     escape_rfc3986,
     escape_url,
+    ExtractorError,
     find_xpath_attr,
     fix_xml_ampersands,
     InAdvancePagedList,
@@ -39,6 +40,7 @@ from youtube_dl.utils import (
     read_batch_urls,
     sanitize_filename,
     sanitize_path,
+    sanitize_url_path_consecutive_slashes,
     shell_quote,
     smuggle_url,
     str_to_int,
@@ -53,6 +55,7 @@ from youtube_dl.utils import (
     urlencode_postdata,
     version_tuple,
     xpath_with_ns,
+    xpath_text,
     render_table,
     match_str,
 )
@@ -168,6 +171,26 @@ class TestUtil(unittest.TestCase):
         self.assertEqual(sanitize_path('./abc'), 'abc')
         self.assertEqual(sanitize_path('./../abc'), '..\\abc')
 
+    def test_sanitize_url_path_consecutive_slashes(self):
+        self.assertEqual(
+            sanitize_url_path_consecutive_slashes('http://hostname/foo//bar/filename.html'),
+            'http://hostname/foo/bar/filename.html')
+        self.assertEqual(
+            sanitize_url_path_consecutive_slashes('http://hostname//foo/bar/filename.html'),
+            'http://hostname/foo/bar/filename.html')
+        self.assertEqual(
+            sanitize_url_path_consecutive_slashes('http://hostname//'),
+            'http://hostname/')
+        self.assertEqual(
+            sanitize_url_path_consecutive_slashes('http://hostname/foo/bar/filename.html'),
+            'http://hostname/foo/bar/filename.html')
+        self.assertEqual(
+            sanitize_url_path_consecutive_slashes('http://hostname/'),
+            'http://hostname/')
+        self.assertEqual(
+            sanitize_url_path_consecutive_slashes('http://hostname/abc//'),
+            'http://hostname/abc/')
+
     def test_ordered_set(self):
         self.assertEqual(orderedSet([1, 1, 2, 3, 4, 4, 5, 6, 7, 3, 5]), [1, 2, 3, 4, 5, 6, 7])
         self.assertEqual(orderedSet([]), [])
@@ -177,6 +200,8 @@ class TestUtil(unittest.TestCase):
 
     def test_unescape_html(self):
         self.assertEqual(unescapeHTML('%20;'), '%20;')
+        self.assertEqual(unescapeHTML('&#x2F;'), '/')
+        self.assertEqual(unescapeHTML('&#47;'), '/')
         self.assertEqual(
             unescapeHTML('&eacute;'), 'é')
 
@@ -202,6 +227,7 @@ class TestUtil(unittest.TestCase):
         self.assertEqual(
             unified_strdate('2/2/2015 6:47:40 PM', day_first=False),
             '20150202')
+        self.assertEqual(unified_strdate('25-09-2014'), '20140925')
 
     def test_find_xpath_attr(self):
         testxml = '''<root>
@@ -228,6 +254,17 @@ class TestUtil(unittest.TestCase):
         self.assertTrue(find('media:song') is not None)
         self.assertEqual(find('media:song/media:author').text, 'The Author')
         self.assertEqual(find('media:song/url').text, 'http://server.com/download.mp3')
+
+    def test_xpath_text(self):
+        testxml = '''<root>
+            <div>
+                <p>Foo</p>
+            </div>
+        </root>'''
+        doc = xml.etree.ElementTree.fromstring(testxml)
+        self.assertEqual(xpath_text(doc, 'div/p'), 'Foo')
+        self.assertTrue(xpath_text(doc, 'div/bar') is None)
+        self.assertRaises(ExtractorError, xpath_text, doc, 'div/bar', fatal=True)
 
     def test_smuggle_url(self):
         data = {"ö": "ö", "abc": [3]}
@@ -433,6 +470,12 @@ class TestUtil(unittest.TestCase):
         d = json.loads(on)
         self.assertEqual(d['x'], 1)
         self.assertEqual(d['y'], 'a')
+
+        on = js_to_json('["abc", "def",]')
+        self.assertEqual(json.loads(on), ['abc', 'def'])
+
+        on = js_to_json('{"abc": "def",}')
+        self.assertEqual(json.loads(on), {'abc': 'def'})
 
     def test_clean_html(self):
         self.assertEqual(clean_html('a:\nb'), 'a: b')
