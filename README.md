@@ -5,6 +5,7 @@ youtube-dl - download videos from youtube.com or other video platforms
 - [OPTIONS](#options)
 - [CONFIGURATION](#configuration)
 - [OUTPUT TEMPLATE](#output-template)
+- [FORMAT SELECTION](#format-selection)
 - [VIDEO SELECTION](#video-selection)
 - [FAQ](#faq)
 - [DEVELOPER INSTRUCTIONS](#developer-instructions)
@@ -134,7 +135,7 @@ which means you can modify it, redistribute it or use it however you like.
     --no-mtime                       Do not use the Last-modified header to set the file modification time
     --write-description              Write video description to a .description file
     --write-info-json                Write video metadata to a .info.json file
-    --write-annotations              Write video annotations to a .annotation file
+    --write-annotations              Write video annotations to a .annotations.xml file
     --load-info FILE                 JSON file containing the video information (created with the "--write-info-json" option)
     --cookies FILE                   File to read cookies from and dump cookie jar in
     --cache-dir DIR                  Location in the filesystem where youtube-dl can store some downloaded information permanently. By default $XDG_CACHE_HOME/youtube-dl
@@ -186,19 +187,9 @@ which means you can modify it, redistribute it or use it however you like.
     --sleep-interval SECONDS         Number of seconds to sleep before each download.
 
 ## Video Format Options:
-    -f, --format FORMAT              Video format code, specify the order of preference using slashes, as in -f 22/17/18 .  Instead of format codes, you can select by
-                                     extension for the extensions aac, m4a, mp3, mp4, ogg, wav, webm. You can also use the special names "best", "bestvideo", "bestaudio",
-                                     "worst".  You can filter the video results by putting a condition in brackets, as in -f "best[height=720]" (or -f "[filesize>10M]").
-                                     This works for filesize, height, width, tbr, abr, vbr, asr, and fps and the comparisons <, <=, >, >=, =, != and for ext, acodec,
-                                     vcodec, container, and protocol and the comparisons =, != . Formats for which the value is not known are excluded unless you put a
-                                     question mark (?) after the operator. You can combine format filters, so  -f "[height <=? 720][tbr>500]" selects up to 720p videos
-                                     (or videos where the height is not known) with a bitrate of at least 500 KBit/s. By default, youtube-dl will pick the best quality.
-                                     Use commas to download multiple audio formats, such as -f  136/137/mp4/bestvideo,140/m4a/bestaudio. You can merge the video and audio
-                                     of two formats into a single file using -f <video-format>+<audio-format> (requires ffmpeg or avconv), for example -f
-                                     bestvideo+bestaudio.
+    -f, --format FORMAT              Video format code, see the "FORMAT SELECTION" for all the info
     --all-formats                    Download all available video formats
     --prefer-free-formats            Prefer free video formats unless a specific one is requested
-    --max-quality FORMAT             Highest quality format to download
     -F, --list-formats               List all available formats
     --youtube-skip-dash-manifest     Do not download the DASH manifest on YouTube videos
     --merge-output-format FORMAT     If a merge is required (e.g. bestvideo+bestaudio), output to given container format. One of mkv, mp4, ogg, webm, flv.Ignored if no
@@ -227,7 +218,7 @@ which means you can modify it, redistribute it or use it however you like.
     --recode-video FORMAT            Encode the video to another format if necessary (currently supported: mp4|flv|ogg|webm|mkv)
     -k, --keep-video                 Keep the video file on disk after the post-processing; the video is erased by default
     --no-post-overwrites             Do not overwrite post-processed files; the post-processed files are overwritten by default
-    --embed-subs                     Embed subtitles in the video (only for mp4 videos)
+    --embed-subs                     Embed subtitles in the video (only for mkv and mp4 videos)
     --embed-thumbnail                Embed thumbnail in the audio as cover art
     --add-metadata                   Write metadata to the video file
     --metadata-from-title FORMAT     Parse additional metadata like song title / artist from the video title. The format syntax is the same as --output, the parsed
@@ -272,6 +263,17 @@ youtube-dl test video ''_ä↭𝕐.mp4    # All kinds of weird characters
 $ youtube-dl --get-filename -o "%(title)s.%(ext)s" BaW_jenozKc --restrict-filenames
 youtube-dl_test_video_.mp4          # A simple file name
 ```
+
+# FORMAT SELECTION
+
+By default youtube-dl tries to download the best quality, but sometimes you may want to download other format.
+The simplest case is requesting a specific format, for example `-f 22`. You can get the list of available formats using `--list-formats`, you can also use a file extension (currently it supports aac, m4a, mp3, mp4, ogg, wav, webm) or the special names `best`, `bestvideo`, `bestaudio` and `worst`.
+
+If you want to download multiple videos and they don't have the same formats available, you can specify the order of preference using slashes, as in `-f 22/17/18`. You can also filter the video results by putting a condition in brackets, as in `-f "best[height=720]"` (or `-f "[filesize>10M]"`).  This works for filesize, height, width, tbr, abr, vbr, asr, and fps and the comparisons <, <=, >, >=, =, != and for ext, acodec, vcodec, container, and protocol and the comparisons =, != . Formats for which the value is not known are excluded unless you put a question mark (?) after the operator. You can combine format filters, so  `-f "[height <=? 720][tbr>500]"` selects up to 720p videos (or videos where the height is not known) with a bitrate of at least 500 KBit/s. Use commas to download multiple formats, such as `-f 136/137/mp4/bestvideo,140/m4a/bestaudio`. You can merge the video and audio of two formats into a single file using `-f <video-format>+<audio-format>` (requires ffmpeg or avconv), for example `-f bestvideo+bestaudio`.
+
+Since the end of April 2015 and version 2015.04.26 youtube-dl uses `-f bestvideo+bestaudio/best` as default format selection (see #5447, #5456). If ffmpeg or avconv are installed this results in downloading `bestvideo` and `bestaudio` separately and muxing them together into a single file giving the best overall quality available. Otherwise it falls back to `best` and results in downloading best available quality served as a single file. `best` is also needed for videos that don't come from YouTube because they don't provide the audio and video in two different files. If you want to only download some dash formats (for example if you are not interested in getting videos with a resolution higher than 1080p), you can add `-f bestvideo[height<=?1080]+bestaudio/best` to your configuration file.
+
+If you want to preserve the old format selection behavior (prior to youtube-dl 2015.04.26), i.e. you want to download best available quality media served as a single file, you should explicitly specify your choice with `-f best`. You may want to add it to the [configuration file](#configuration) in order not to type it every time you run youtube-dl.
 
 # VIDEO SELECTION
 
@@ -323,9 +325,9 @@ YouTube changed their playlist format in March 2014 and later on, so you'll need
 
 If you have installed youtube-dl with a package manager, pip, setup.py or a tarball, please use that to update. Note that Ubuntu packages do not seem to get updated anymore. Since we are not affiliated with Ubuntu, there is little we can do. Feel free to [report bugs](https://bugs.launchpad.net/ubuntu/+source/youtube-dl/+filebug) to the [Ubuntu packaging guys](mailto:ubuntu-motu@lists.ubuntu.com?subject=outdated%20version%20of%20youtube-dl) - all they have to do is update the package to a somewhat recent version. See above for a way to update.
 
-### Do I always have to pass in `--max-quality FORMAT`, or `-citw`?
+### Do I always have to pass `-citw`?
 
-By default, youtube-dl intends to have the best options (incidentally, if you have a convincing case that these should be different, [please file an issue where you explain that](https://yt-dl.org/bug)). Therefore, it is unnecessary and sometimes harmful to copy long option strings from webpages. In particular, `--max-quality` *limits* the video quality (so if you want the best quality, do NOT pass it in), and the only option out of `-citw` that is regularly useful is `-i`.
+By default, youtube-dl intends to have the best options (incidentally, if you have a convincing case that these should be different, [please file an issue where you explain that](https://yt-dl.org/bug)). Therefore, it is unnecessary and sometimes harmful to copy long option strings from webpages. In particular, the only option out of `-citw` that is regularly useful is `-i`.
 
 ### Can you please put the -b option back?
 
@@ -356,6 +358,22 @@ YouTube has switched to a new video info format in July 2011 which is not suppor
 ### ERROR: unable to download video ###
 
 YouTube requires an additional signature since September 2012 which is not supported by old versions of youtube-dl. See [above](#how-do-i-update-youtube-dl) for how to update youtube-dl.
+
+### Video URL contains an ampersand and I'm getting some strange output `[1] 2839` or `'v' is not recognized as an internal or external command` ###
+
+That's actually the output from your shell. Since ampersand is one of the special shell characters it's interpreted by shell preventing you from passing the whole URL to youtube-dl. To disable your shell from interpreting the ampersands (or any other special characters) you have to either put the whole URL in quotes or escape them with a backslash (which approach will work depends on your shell).
+
+For example if your URL is https://www.youtube.com/watch?t=4&v=BaW_jenozKc you should end up with following command:
+
+```youtube-dl 'https://www.youtube.com/watch?t=4&v=BaW_jenozKc'```
+
+or
+
+```youtube-dl https://www.youtube.com/watch?t=4\&v=BaW_jenozKc```
+
+For Windows you have to use the double quotes:
+
+```youtube-dl "https://www.youtube.com/watch?t=4&v=BaW_jenozKc"```
 
 ### ExtractorError: Could not find JS function u'OF'
 

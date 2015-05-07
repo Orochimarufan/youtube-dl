@@ -37,6 +37,7 @@ from .compat import (
     compat_chr,
     compat_html_entities,
     compat_http_client,
+    compat_kwargs,
     compat_parse_qs,
     compat_socket_create_connection,
     compat_str,
@@ -114,7 +115,7 @@ def write_json_file(obj, fn):
             'encoding': 'utf-8',
         })
 
-    tf = tempfile.NamedTemporaryFile(**args)
+    tf = tempfile.NamedTemporaryFile(**compat_kwargs(args))
 
     try:
         with tf:
@@ -371,6 +372,18 @@ def unescapeHTML(s):
         r'&([^;]+);', lambda m: _htmlentity_transform(m.group(1)), s)
 
 
+def get_subprocess_encoding():
+    if sys.platform == 'win32' and sys.getwindowsversion()[0] >= 5:
+        # For subprocess calls, encode with locale encoding
+        # Refer to http://stackoverflow.com/a/9951851/35070
+        encoding = preferredencoding()
+    else:
+        encoding = sys.getfilesystemencoding()
+    if encoding is None:
+        encoding = 'utf-8'
+    return encoding
+
+
 def encodeFilename(s, for_subprocess=False):
     """
     @param s The name of the file
@@ -382,21 +395,24 @@ def encodeFilename(s, for_subprocess=False):
     if sys.version_info >= (3, 0):
         return s
 
-    if sys.platform == 'win32' and sys.getwindowsversion()[0] >= 5:
-        # Pass '' directly to use Unicode APIs on Windows 2000 and up
-        # (Detecting Windows NT 4 is tricky because 'major >= 4' would
-        # match Windows 9x series as well. Besides, NT 4 is obsolete.)
-        if not for_subprocess:
-            return s
-        else:
-            # For subprocess calls, encode with locale encoding
-            # Refer to http://stackoverflow.com/a/9951851/35070
-            encoding = preferredencoding()
-    else:
-        encoding = sys.getfilesystemencoding()
-    if encoding is None:
-        encoding = 'utf-8'
-    return s.encode(encoding, 'ignore')
+    # Pass '' directly to use Unicode APIs on Windows 2000 and up
+    # (Detecting Windows NT 4 is tricky because 'major >= 4' would
+    # match Windows 9x series as well. Besides, NT 4 is obsolete.)
+    if not for_subprocess and sys.platform == 'win32' and sys.getwindowsversion()[0] >= 5:
+        return s
+
+    return s.encode(get_subprocess_encoding(), 'ignore')
+
+
+def decodeFilename(b, for_subprocess=False):
+
+    if sys.version_info >= (3, 0):
+        return b
+
+    if not isinstance(b, bytes):
+        return b
+
+    return b.decode(get_subprocess_encoding(), 'ignore')
 
 
 def encodeArgument(s):
@@ -406,6 +422,10 @@ def encodeArgument(s):
         # assert False, 'Internal error: %r should be of type %r, is %r' % (s, compat_str, type(s))
         s = s.decode('ascii')
     return encodeFilename(s, True)
+
+
+def decodeArgument(b):
+    return decodeFilename(b, True)
 
 
 def decodeOption(optval):
@@ -452,6 +472,17 @@ def make_HTTPS_handler(params, **kwargs):
         return YoutubeDLHTTPSHandler(params, context=context, **kwargs)
 
 
+def bug_reports_message():
+    if ytdl_is_updateable():
+        update_cmd = 'type  youtube-dl -U  to update'
+    else:
+        update_cmd = 'see  https://yt-dl.org/update  on how to update'
+    msg = '; please report this issue on https://yt-dl.org/bug .'
+    msg += ' Make sure you are using the latest version; %s.' % update_cmd
+    msg += ' Be sure to call youtube-dl with the --verbose flag and include its complete output.'
+    return msg
+
+
 class ExtractorError(Exception):
     """Error during info extraction."""
 
@@ -467,13 +498,7 @@ class ExtractorError(Exception):
         if cause:
             msg += ' (caused by %r)' % cause
         if not expected:
-            if ytdl_is_updateable():
-                update_cmd = 'type  youtube-dl -U  to update'
-            else:
-                update_cmd = 'see  https://yt-dl.org/update  on how to update'
-            msg += '; please report this issue on https://yt-dl.org/bug .'
-            msg += ' Make sure you are using the latest version; %s.' % update_cmd
-            msg += ' Be sure to call youtube-dl with the --verbose flag and include its complete output.'
+            msg += bug_reports_message()
         super(ExtractorError, self).__init__(msg)
 
         self.traceback = tb
@@ -1104,15 +1129,6 @@ def shell_quote(args):
     return ' '.join(quoted_args)
 
 
-def takewhile_inclusive(pred, seq):
-    """ Like itertools.takewhile, but include the latest evaluated element
-        (the first element so that Not pred(e)) """
-    for e in seq:
-        yield e
-        if not pred(e):
-            return
-
-
 def smuggle_url(url, data):
     """ Pass additional data in a URL for internal use. """
 
@@ -1333,9 +1349,19 @@ def parse_duration(s):
     return res
 
 
-def prepend_extension(filename, ext):
+def prepend_extension(filename, ext, expected_real_ext=None):
     name, real_ext = os.path.splitext(filename)
-    return '{0}.{1}{2}'.format(name, ext, real_ext)
+    return (
+        '{0}.{1}{2}'.format(name, ext, real_ext)
+        if not expected_real_ext or real_ext[1:] == expected_real_ext
+        else '{0}.{1}'.format(filename, ext))
+
+
+def replace_extension(filename, ext, expected_real_ext=None):
+    name, real_ext = os.path.splitext(filename)
+    return '{0}.{1}'.format(
+        name if not expected_real_ext or real_ext[1:] == expected_real_ext else filename,
+        ext)
 
 
 def check_executable(exe, args=[]):
@@ -1456,6 +1482,14 @@ def uppercase_escape(s):
     unicode_escape = codecs.getdecoder('unicode_escape')
     return re.sub(
         r'\\U[0-9a-fA-F]{8}',
+        lambda m: unicode_escape(m.group(0))[0],
+        s)
+
+
+def lowercase_escape(s):
+    unicode_escape = codecs.getdecoder('unicode_escape')
+    return re.sub(
+        r'\\u[0-9a-fA-F]{4}',
         lambda m: unicode_escape(m.group(0))[0],
         s)
 
@@ -1793,6 +1827,59 @@ def match_filter_func(filter_str):
             video_title = info_dict.get('title', info_dict.get('id', 'video'))
             return '%s does not pass filter %s, skipping ..' % (video_title, filter_str)
     return _match_func
+
+
+def parse_dfxp_time_expr(time_expr):
+    if not time_expr:
+        return 0.0
+
+    mobj = re.match(r'^(?P<time_offset>\d+(?:\.\d+)?)s?$', time_expr)
+    if mobj:
+        return float(mobj.group('time_offset'))
+
+    mobj = re.match(r'^(\d+):(\d\d):(\d\d(?:\.\d+)?)$', time_expr)
+    if mobj:
+        return 3600 * int(mobj.group(1)) + 60 * int(mobj.group(2)) + float(mobj.group(3))
+
+
+def format_srt_time(seconds):
+    (mins, secs) = divmod(seconds, 60)
+    (hours, mins) = divmod(mins, 60)
+    millisecs = (secs - int(secs)) * 1000
+    secs = int(secs)
+    return '%02d:%02d:%02d,%03d' % (hours, mins, secs, millisecs)
+
+
+def dfxp2srt(dfxp_data):
+    _x = functools.partial(xpath_with_ns, ns_map={'ttml': 'http://www.w3.org/ns/ttml'})
+
+    def parse_node(node):
+        str_or_empty = functools.partial(str_or_none, default='')
+
+        out = str_or_empty(node.text)
+
+        for child in node:
+            if child.tag == _x('ttml:br'):
+                out += '\n' + str_or_empty(child.tail)
+            elif child.tag == _x('ttml:span'):
+                out += str_or_empty(parse_node(child))
+            else:
+                out += str_or_empty(xml.etree.ElementTree.tostring(child))
+
+        return out
+
+    dfxp = xml.etree.ElementTree.fromstring(dfxp_data.encode('utf-8'))
+    out = []
+    paras = dfxp.findall(_x('.//ttml:p'))
+
+    for para, index in zip(paras, itertools.count(1)):
+        out.append('%d\n%s --> %s\n%s\n\n' % (
+            index,
+            format_srt_time(parse_dfxp_time_expr(para.attrib.get('begin'))),
+            format_srt_time(parse_dfxp_time_expr(para.attrib.get('end'))),
+            parse_node(para)))
+
+    return ''.join(out)
 
 
 class PerRequestProxyHandler(compat_urllib_request.ProxyHandler):

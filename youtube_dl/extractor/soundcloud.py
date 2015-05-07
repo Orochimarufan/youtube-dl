@@ -221,7 +221,12 @@ class SoundcloudIE(InfoExtractor):
                 info_json_url += "&secret_token=" + token
         elif mobj.group('player'):
             query = compat_urlparse.parse_qs(compat_urlparse.urlparse(url).query)
-            return self.url_result(query['url'][0])
+            real_url = query['url'][0]
+            # If the token is in the query of the original url we have to
+            # manually add it
+            if 'secret_token' in query:
+                real_url += '?secret_token=' + query['secret_token'][0]
+            return self.url_result(real_url)
         else:
             # extract uploader (which is in the url)
             uploader = mobj.group('uploader')
@@ -274,9 +279,8 @@ class SoundcloudSetIE(SoundcloudIE):
         info = self._download_json(resolv_url, full_title)
 
         if 'errors' in info:
-            for err in info['errors']:
-                self._downloader.report_error('unable to download video webpage: %s' % compat_str(err['error_message']))
-            return
+            msgs = (compat_str(err['error_message']) for err in info['errors'])
+            raise ExtractorError('unable to download video webpage: %s' % ','.join(msgs))
 
         return {
             '_type': 'playlist',

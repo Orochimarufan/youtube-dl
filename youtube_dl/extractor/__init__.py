@@ -32,6 +32,7 @@ from .atresplayer import AtresPlayerIE
 from .atttechchannel import ATTTechChannelIE
 from .audiomack import AudiomackIE, AudiomackAlbumIE
 from .azubu import AzubuIE
+from .baidu import BaiduVideoIE
 from .bambuser import BambuserIE, BambuserChannelIE
 from .bandcamp import BandcampIE, BandcampAlbumIE
 from .bbccouk import BBCCoUkIE
@@ -70,6 +71,7 @@ from .chirbit import (
     ChirbitProfileIE,
 )
 from .cinchcast import CinchcastIE
+from .cinemassacre import CinemassacreIE
 from .clipfish import ClipfishIE
 from .cliphunter import CliphunterIE
 from .clipsyndicate import ClipsyndicateIE
@@ -160,6 +162,7 @@ from .footyroom import FootyRoomIE
 from .fourtube import FourTubeIE
 from .foxgay import FoxgayIE
 from .foxnews import FoxNewsIE
+from .foxsports import FoxSportsIE
 from .franceculture import FranceCultureIE
 from .franceinter import FranceInterIE
 from .francetv import (
@@ -185,6 +188,7 @@ from .gametrailers import GametrailersIE
 from .gazeta import GazetaIE
 from .gdcvault import GDCVaultIE
 from .generic import GenericIE
+from .gfycat import GfycatIE
 from .giantbomb import GiantBombIE
 from .giga import GigaIE
 from .glide import GlideIE
@@ -196,7 +200,6 @@ from .googleplus import GooglePlusIE
 from .googlesearch import GoogleSearchIE
 from .gorillavid import GorillaVidIE
 from .goshgay import GoshgayIE
-from .grooveshark import GroovesharkIE
 from .groupon import GrouponIE
 from .hark import HarkIE
 from .hearthisat import HearThisAtIE
@@ -273,6 +276,7 @@ from .macgamestore import MacGameStoreIE
 from .mailru import MailRuIE
 from .malemotion import MalemotionIE
 from .mdr import MDRIE
+from .megavideoz import MegaVideozIE
 from .metacafe import MetacafeIE
 from .metacritic import MetacriticIE
 from .mgoon import MgoonIE
@@ -359,7 +363,10 @@ from .nrk import (
 )
 from .ntvde import NTVDeIE
 from .ntvru import NTVRuIE
-from .nytimes import NYTimesIE
+from .nytimes import (
+    NYTimesIE,
+    NYTimesArticleIE,
+)
 from .nuvid import NuvidIE
 from .odnoklassniki import OdnoklassnikiIE
 from .oktoberfesttv import OktoberfestTVIE
@@ -374,6 +381,7 @@ from .orf import (
 from .parliamentliveuk import ParliamentLiveUKIE
 from .patreon import PatreonIE
 from .pbs import PBSIE
+from .philharmoniedeparis import PhilharmonieDeParisIE
 from .phoenix import PhoenixIE
 from .photobucket import PhotobucketIE
 from .planetaplay import PlanetaPlayIE
@@ -444,7 +452,8 @@ from .sbs import SBSIE
 from .scivee import SciVeeIE
 from .screencast import ScreencastIE
 from .screencastomatic import ScreencastOMaticIE
-from .screenwavemedia import CinemassacreIE, ScreenwaveMediaIE, TeamFourIE
+from .screenwavemedia import ScreenwaveMediaIE, TeamFourIE
+from .senateisvp import SenateISVPIE
 from .servingsys import ServingSysIE
 from .sexu import SexuIE
 from .sexykarma import SexyKarmaIE
@@ -474,7 +483,9 @@ from .soundgasm import (
 )
 from .southpark import (
     SouthParkIE,
-    SouthparkDeIE,
+    SouthParkEsIE,
+    SouthParkDeIE,
+    SouthParkNlIE
 )
 from .space import SpaceIE
 from .spankbang import SpankBangIE

@@ -35,6 +35,8 @@ from .rutv import RUTVIE
 from .smotri import SmotriIE
 from .condenast import CondeNastIE
 from .udn import UDNEmbedIE
+from .senateisvp import SenateISVPIE
+from .bliptv import BlipTVIE
 
 
 class GenericIE(InfoExtractor):
@@ -410,6 +412,19 @@ class GenericIE(InfoExtractor):
                 'upload_date': '20140531',
                 'thumbnail': 're:^https?://.*\.jpg$',
             },
+        },
+        # MLB articles
+        {
+            'url': 'http://m.mlb.com/news/article/118550098/blue-jays-kevin-pillar-goes-spidey-up-the-wall-to-rob-tim-beckham-of-a-homer',
+            'md5': 'b190e70141fb9a1552a85426b4da1b5d',
+            'info_dict': {
+                'id': '75609783',
+                'ext': 'mp4',
+                'title': 'Must C: Pillar climbs for catch',
+                'description': '4/15/15: Blue Jays outfielder Kevin Pillar continues his defensive dominance by climbing the wall in left to rob Tim Beckham of a home run',
+                'timestamp': 1429124820,
+                'upload_date': '20150415',
+            }
         },
         # Wistia embed
         {
@@ -1072,12 +1087,9 @@ class GenericIE(InfoExtractor):
             }
 
         # Look for embedded blip.tv player
-        mobj = re.search(r'<meta\s[^>]*https?://api\.blip\.tv/\w+/redirect/\w+/(\d+)', webpage)
-        if mobj:
-            return self.url_result('http://blip.tv/a/a-' + mobj.group(1), 'BlipTV')
-        mobj = re.search(r'<(?:iframe|embed|object)\s[^>]*(https?://(?:\w+\.)?blip\.tv/(?:play/|api\.swf#)[a-zA-Z0-9_]+)', webpage)
-        if mobj:
-            return self.url_result(mobj.group(1), 'BlipTV')
+        bliptv_url = BlipTVIE._extract_url(webpage)
+        if bliptv_url:
+            return self.url_result(bliptv_url, 'BlipTV')
 
         # Look for embedded condenast player
         matches = re.findall(
@@ -1290,6 +1302,10 @@ class GenericIE(InfoExtractor):
         mobj = re.search(
             r'<iframe[^>]+?src=(["\'])(?P<url>https?://m(?:lb)?\.mlb\.com/shared/video/embed/embed\.html\?.+?)\1',
             webpage)
+        if not mobj:
+            mobj = re.search(
+                r'data-video-link=["\'](?P<url>http://m.mlb.com/video/[^"\']+)',
+                webpage)
         if mobj is not None:
             return self.url_result(mobj.group('url'), 'MLB')
 
@@ -1364,6 +1380,11 @@ class GenericIE(InfoExtractor):
         if mobj is not None:
             return self.url_result(
                 compat_urlparse.urljoin(url, mobj.group('url')), 'UDNEmbed')
+
+        # Look for Senate ISVP iframe
+        senate_isvp_url = SenateISVPIE._search_iframe_url(webpage)
+        if senate_isvp_url:
+            return self.url_result(surl, 'SenateISVP')
 
         def check_video(vurl):
             if YoutubeIE.suitable(vurl):

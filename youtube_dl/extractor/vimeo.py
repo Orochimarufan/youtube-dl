@@ -38,7 +38,7 @@ class VimeoBaseInfoExtractor(InfoExtractor):
         self.report_login()
         login_url = 'https://vimeo.com/log_in'
         webpage = self._download_webpage(login_url, None, False)
-        token = self._search_regex(r'xsrft = \'(.*?)\'', webpage, 'login token')
+        token = self._search_regex(r'xsrft":"(.*?)"', webpage, 'login token')
         data = urlencode_postdata({
             'email': username,
             'password': password,
@@ -177,7 +177,7 @@ class VimeoIE(VimeoBaseInfoExtractor):
         password = self._downloader.params.get('videopassword', None)
         if password is None:
             raise ExtractorError('This video is protected by a password, use the --video-password option', expected=True)
-        token = self._search_regex(r'xsrft = \'(.*?)\'', webpage, 'login token')
+        token = self._search_regex(r'xsrft[\s=:"\']+([^"\']+)', webpage, 'login token')
         data = urlencode_postdata({
             'password': password,
             'token': token,
@@ -223,6 +223,8 @@ class VimeoIE(VimeoBaseInfoExtractor):
         orig_url = url
         if mobj.group('pro') or mobj.group('player'):
             url = 'https://player.vimeo.com/video/' + video_id
+        else:
+            url = 'https://vimeo.com/' + video_id
 
         # Retrieve video webpage to extract further information
         request = compat_urllib_request.Request(url, None, headers)
@@ -439,7 +441,7 @@ class VimeoChannelIE(InfoExtractor):
             name="([^"]+)"\s+
             value="([^"]*)"
             ''', login_form))
-        token = self._search_regex(r'xsrft = \'(.*?)\'', webpage, 'login token')
+        token = self._search_regex(r'xsrft[\s=:"\']+([^"\']+)', webpage, 'login token')
         fields['token'] = token
         fields['password'] = password
         post = urlencode_postdata(fields)

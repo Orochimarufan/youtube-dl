@@ -41,6 +41,8 @@ from youtube_dl.utils import (
     sanitize_filename,
     sanitize_path,
     sanitize_url_path_consecutive_slashes,
+    prepend_extension,
+    replace_extension,
     shell_quote,
     smuggle_url,
     str_to_int,
@@ -51,6 +53,7 @@ from youtube_dl.utils import (
     unified_strdate,
     unsmuggle_url,
     uppercase_escape,
+    lowercase_escape,
     url_basename,
     urlencode_postdata,
     version_tuple,
@@ -58,6 +61,8 @@ from youtube_dl.utils import (
     xpath_text,
     render_table,
     match_str,
+    parse_dfxp_time_expr,
+    dfxp2srt,
 )
 
 
@@ -190,6 +195,22 @@ class TestUtil(unittest.TestCase):
         self.assertEqual(
             sanitize_url_path_consecutive_slashes('http://hostname/abc//'),
             'http://hostname/abc/')
+
+    def test_prepend_extension(self):
+        self.assertEqual(prepend_extension('abc.ext', 'temp'), 'abc.temp.ext')
+        self.assertEqual(prepend_extension('abc.ext', 'temp', 'ext'), 'abc.temp.ext')
+        self.assertEqual(prepend_extension('abc.unexpected_ext', 'temp', 'ext'), 'abc.unexpected_ext.temp')
+        self.assertEqual(prepend_extension('abc', 'temp'), 'abc.temp')
+        self.assertEqual(prepend_extension('.abc', 'temp'), '.abc.temp')
+        self.assertEqual(prepend_extension('.abc.ext', 'temp'), '.abc.temp.ext')
+
+    def test_replace_extension(self):
+        self.assertEqual(replace_extension('abc.ext', 'temp'), 'abc.temp')
+        self.assertEqual(replace_extension('abc.ext', 'temp', 'ext'), 'abc.temp')
+        self.assertEqual(replace_extension('abc.unexpected_ext', 'temp', 'ext'), 'abc.unexpected_ext.temp')
+        self.assertEqual(replace_extension('abc', 'temp'), 'abc.temp')
+        self.assertEqual(replace_extension('.abc', 'temp'), '.abc.temp')
+        self.assertEqual(replace_extension('.abc.ext', 'temp'), '.abc.temp')
 
     def test_ordered_set(self):
         self.assertEqual(orderedSet([1, 1, 2, 3, 4, 4, 5, 6, 7, 3, 5]), [1, 2, 3, 4, 5, 6, 7])
@@ -398,6 +419,10 @@ class TestUtil(unittest.TestCase):
         self.assertEqual(uppercase_escape('aä'), 'aä')
         self.assertEqual(uppercase_escape('\\U0001d550'), '𝕐')
 
+    def test_lowercase_escape(self):
+        self.assertEqual(lowercase_escape('aä'), 'aä')
+        self.assertEqual(lowercase_escape('\\u0026'), '&')
+
     def test_limit_length(self):
         self.assertEqual(limit_length(None, 12), None)
         self.assertEqual(limit_length('foo', 12), 'foo')
@@ -580,6 +605,42 @@ ffmpeg version 2.4.4 Copyright (c) 2000-2014 the FFmpeg ...'''), '2.4.4')
         self.assertFalse(match_str(
             'like_count > 100 & dislike_count <? 50 & description',
             {'like_count': 190, 'dislike_count': 10}))
+
+    def test_parse_dfxp_time_expr(self):
+        self.assertEqual(parse_dfxp_time_expr(None), 0.0)
+        self.assertEqual(parse_dfxp_time_expr(''), 0.0)
+        self.assertEqual(parse_dfxp_time_expr('0.1'), 0.1)
+        self.assertEqual(parse_dfxp_time_expr('0.1s'), 0.1)
+        self.assertEqual(parse_dfxp_time_expr('00:00:01'), 1.0)
+        self.assertEqual(parse_dfxp_time_expr('00:00:01.100'), 1.1)
+
+    def test_dfxp2srt(self):
+        dfxp_data = '''<?xml version="1.0" encoding="UTF-8"?>
+            <tt xmlns="http://www.w3.org/ns/ttml" xml:lang="en" xmlns:tts="http://www.w3.org/ns/ttml#parameter">
+            <body>
+                <div xml:lang="en">
+                    <p begin="0" end="1">The following line contains Chinese characters and special symbols</p>
+                    <p begin="1" end="2">第二行<br/>♪♪</p>
+                    <p begin="2" end="3"><span>Third<br/>Line</span></p>
+                </div>
+            </body>
+            </tt>'''
+        srt_data = '''1
+00:00:00,000 --> 00:00:01,000
+The following line contains Chinese characters and special symbols
+
+2
+00:00:01,000 --> 00:00:02,000
+第二行
+♪♪
+
+3
+00:00:02,000 --> 00:00:03,000
+Third
+Line
+
+'''
+        self.assertEqual(dfxp2srt(dfxp_data), srt_data)
 
 
 if __name__ == '__main__':
