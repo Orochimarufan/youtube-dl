@@ -327,13 +327,6 @@ def sanitize_path(s):
     return os.path.join(*sanitized_path)
 
 
-def sanitize_url_path_consecutive_slashes(url):
-    """Collapses consecutive slashes in URLs' path"""
-    parsed_url = list(compat_urlparse.urlparse(url))
-    parsed_url[2] = re.sub(r'/{2,}', '/', parsed_url[2])
-    return compat_urlparse.urlunparse(parsed_url)
-
-
 def orderedSet(iterable):
     """ Remove all duplicates from the input iterable """
     res = []
@@ -1380,7 +1373,7 @@ def get_exe_version(exe, args=['--version'],
     or False if the executable is not present """
     try:
         out, _ = subprocess.Popen(
-            [exe] + args,
+            [encodeArgument(exe)] + args,
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT).communicate()
     except OSError:
         return False
@@ -1672,6 +1665,7 @@ def mimetype2ext(mt):
     return {
         'x-ms-wmv': 'wmv',
         'x-mp4-fragmented': 'mp4',
+        'ttml+xml': 'ttml',
     }.get(res, res)
 
 
@@ -1842,12 +1836,8 @@ def parse_dfxp_time_expr(time_expr):
         return 3600 * int(mobj.group(1)) + 60 * int(mobj.group(2)) + float(mobj.group(3))
 
 
-def format_srt_time(seconds):
-    (mins, secs) = divmod(seconds, 60)
-    (hours, mins) = divmod(mins, 60)
-    millisecs = (secs - int(secs)) * 1000
-    secs = int(secs)
-    return '%02d:%02d:%02d,%03d' % (hours, mins, secs, millisecs)
+def srt_subtitles_timecode(seconds):
+    return '%02d:%02d:%02d,%03d' % (seconds / 3600, (seconds % 3600) / 60, seconds % 60, (seconds % 1) * 1000)
 
 
 def dfxp2srt(dfxp_data):
@@ -1859,9 +1849,9 @@ def dfxp2srt(dfxp_data):
         out = str_or_empty(node.text)
 
         for child in node:
-            if child.tag == _x('ttml:br'):
+            if child.tag in (_x('ttml:br'), 'br'):
                 out += '\n' + str_or_empty(child.tail)
-            elif child.tag == _x('ttml:span'):
+            elif child.tag in (_x('ttml:span'), 'span'):
                 out += str_or_empty(parse_node(child))
             else:
                 out += str_or_empty(xml.etree.ElementTree.tostring(child))
@@ -1870,13 +1860,20 @@ def dfxp2srt(dfxp_data):
 
     dfxp = xml.etree.ElementTree.fromstring(dfxp_data.encode('utf-8'))
     out = []
-    paras = dfxp.findall(_x('.//ttml:p'))
+    paras = dfxp.findall(_x('.//ttml:p')) or dfxp.findall('.//p')
+
+    if not paras:
+        raise ValueError('Invalid dfxp/TTML subtitle')
 
     for para, index in zip(paras, itertools.count(1)):
+        begin_time = parse_dfxp_time_expr(para.attrib['begin'])
+        end_time = parse_dfxp_time_expr(para.attrib.get('end'))
+        if not end_time:
+            end_time = begin_time + parse_dfxp_time_expr(para.attrib['dur'])
         out.append('%d\n%s --> %s\n%s\n\n' % (
             index,
-            format_srt_time(parse_dfxp_time_expr(para.attrib.get('begin'))),
-            format_srt_time(parse_dfxp_time_expr(para.attrib.get('end'))),
+            srt_subtitles_timecode(begin_time),
+            srt_subtitles_timecode(end_time),
             parse_node(para)))
 
     return ''.join(out)

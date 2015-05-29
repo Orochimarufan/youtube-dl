@@ -9,11 +9,13 @@ from .common import InfoExtractor
 from ..utils import (
     strip_jsonp,
     unescapeHTML,
+    js_to_json,
 )
 from ..compat import compat_urllib_request
 
 
 class QQMusicIE(InfoExtractor):
+    IE_NAME = 'qqmusic'
     _VALID_URL = r'http://y.qq.com/#type=song&mid=(?P<id>[0-9A-Za-z]+)'
     _TESTS = [{
         'url': 'http://y.qq.com/#type=song&mid=004295Et37taLD',
@@ -24,7 +26,7 @@ class QQMusicIE(InfoExtractor):
             'title': '可惜没如果',
             'upload_date': '20141227',
             'creator': '林俊杰',
-            'description': 'md5:4348ff1dd24036906baa7b6f973f8d30',
+            'description': 'md5:d327722d0361576fde558f1ac68a7065',
         }
     }]
 
@@ -58,6 +60,8 @@ class QQMusicIE(InfoExtractor):
         lrc_content = self._html_search_regex(
             r'<div class="content" id="lrc_content"[^<>]*>([^<>]+)</div>',
             detail_info_page, 'LRC lyrics', default=None)
+        if lrc_content:
+            lrc_content = lrc_content.replace('\\n', '\n')
 
         guid = self.m_r_get_ruin()
 
@@ -96,6 +100,7 @@ class QQPlaylistBaseIE(InfoExtractor):
 
 
 class QQMusicSingerIE(QQPlaylistBaseIE):
+    IE_NAME = 'qqmusic:singer'
     _VALID_URL = r'http://y.qq.com/#type=singer&mid=(?P<id>[0-9A-Za-z]+)'
     _TEST = {
         'url': 'http://y.qq.com/#type=singer&mid=001BLpXF2DyJe2',
@@ -139,6 +144,7 @@ class QQMusicSingerIE(QQPlaylistBaseIE):
 
 
 class QQMusicAlbumIE(QQPlaylistBaseIE):
+    IE_NAME = 'qqmusic:album'
     _VALID_URL = r'http://y.qq.com/#type=album&mid=(?P<id>[0-9A-Za-z]+)'
 
     _TEST = {
@@ -168,3 +174,67 @@ class QQMusicAlbumIE(QQPlaylistBaseIE):
             album_page, 'album details', default=None)
 
         return self.playlist_result(entries, mid, album_name, album_detail)
+
+
+class QQMusicToplistIE(QQPlaylistBaseIE):
+    IE_NAME = 'qqmusic:toplist'
+    _VALID_URL = r'http://y\.qq\.com/#type=toplist&p=(?P<id>(top|global)_[0-9]+)'
+
+    _TESTS = [{
+        'url': 'http://y.qq.com/#type=toplist&p=global_12',
+        'info_dict': {
+            'id': 'global_12',
+            'title': 'itunes榜',
+        },
+        'playlist_count': 10,
+    }, {
+        'url': 'http://y.qq.com/#type=toplist&p=top_6',
+        'info_dict': {
+            'id': 'top_6',
+            'title': 'QQ音乐巅峰榜·欧美',
+        },
+        'playlist_count': 100,
+    }, {
+        'url': 'http://y.qq.com/#type=toplist&p=global_5',
+        'info_dict': {
+            'id': 'global_5',
+            'title': '韩国mnet排行榜',
+        },
+        'playlist_count': 50,
+    }]
+
+    @staticmethod
+    def strip_qq_jsonp(code):
+        return js_to_json(re.sub(r'^MusicJsonCallback\((.*?)\)/\*.+?\*/$', r'\1', code))
+
+    def _real_extract(self, url):
+        list_id = self._match_id(url)
+
+        list_type, num_id = list_id.split("_")
+
+        list_page = self._download_webpage(
+            "http://y.qq.com/y/static/toplist/index/%s.html" % list_id,
+            list_id, 'Download toplist page')
+
+        entries = []
+        if list_type == 'top':
+            jsonp_url = "http://y.qq.com/y/static/toplist/json/top/%s/1.js" % num_id
+        else:
+            jsonp_url = "http://y.qq.com/y/static/toplist/json/global/%s/1_1.js" % num_id
+
+        toplist_json = self._download_json(
+            jsonp_url, list_id, note='Retrieve toplist json',
+            errnote='Unable to get toplist json', transform_source=self.strip_qq_jsonp)
+
+        for song in toplist_json['l']:
+            s = song['s']
+            song_mid = s.split("|")[20]
+            entries.append(self.url_result(
+                'http://y.qq.com/#type=song&mid=' + song_mid, 'QQMusic',
+                song_mid))
+
+        list_name = self._html_search_regex(
+            r'<h2 id="top_name">([^\']+)</h2>', list_page, 'top list name',
+            default=None)
+
+        return self.playlist_result(entries, list_id, list_name)

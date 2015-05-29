@@ -64,6 +64,8 @@
  - **BR**: Bayerischer Rundfunk Mediathek
  - **Break**
  - **Brightcove**
+ - **bt:article**: Bergens Tidende Articles
+ - **bt:vestlendingen**: Bergens Tidende - Vestlendingen
  - **BuzzFeed**
  - **BYUtv**
  - **Camdemy**
@@ -140,6 +142,7 @@
  - **Eporner**
  - **EroProfile**
  - **Escapist**
+ - **ESPN** (Currently broken)
  - **EveryonesMixtape**
  - **exfm**: ex.fm
  - **ExpoTV**
@@ -240,6 +243,7 @@
  - **LetvPlaylist**
  - **LetvTv**
  - **Libsyn**
+ - **life:embed**
  - **lifenews**: LIFE | NEWS
  - **LiveLeak**
  - **livestream**
@@ -288,6 +292,7 @@
  - **MySpass**
  - **myvideo**
  - **MyVidster**
+ - **N-JOY**
  - **n-tv.de**
  - **NationalGeographic**
  - **Naver**
@@ -328,11 +333,13 @@
  - **ntv.ru**
  - **Nuvid**
  - **NYTimes**
+ - **NYTimesArticle**
  - **ocw.mit.edu**
  - **Odnoklassniki**
  - **OktoberfestTV**
  - **on.aol.com**
  - **Ooyala**
+ - **OoyalaExternal**
  - **OpenFilm**
  - **orf:fm4**: radio FM4
  - **orf:iptv**: iptv.ORF.at
@@ -364,9 +371,10 @@
  - **prosiebensat1**: ProSiebenSat.1 Digital
  - **Puls4**
  - **Pyvideo**
- - **QQMusic**
- - **QQMusicAlbum**
- - **QQMusicSinger**
+ - **qqmusic**
+ - **qqmusic:album**
+ - **qqmusic:singer**
+ - **qqmusic:toplist**
  - **QuickVid**
  - **R7**
  - **radio.de**
@@ -434,6 +442,8 @@
  - **southpark.cc.com**
  - **southpark.cc.com:español**
  - **southpark.de**
+ - **southpark.nl**
+ - **southparkstudios.dk**
  - **Space**
  - **SpankBang**
  - **Spankwire**
@@ -443,6 +453,7 @@
  - **Spike**
  - **Sport5**
  - **SportBox**
+ - **SportBoxEmbed**
  - **SportDeutschland**
  - **Srf**
  - **SRMediathek**: Saarländischer Rundfunk
@@ -453,6 +464,7 @@
  - **StreamCZ**
  - **StreetVoice**
  - **SunPorno**
+ - **SVT**
  - **SVTPlay**: SVT Play and Öppet arkiv
  - **SWRMediathek**
  - **Syfy**
@@ -486,6 +498,7 @@
  - **tlc.com**
  - **tlc.de**
  - **TMZ**
+ - **TMZArticle**
  - **TNAFlix**
  - **tou.tv**
  - **Toypics**: Toypics user profile
@@ -500,6 +513,8 @@
  - **Turbo**
  - **Tutv**
  - **tv.dfb.de**
+ - **TV2**
+ - **TV2Article**
  - **TV4**: tv4.se and tv4play.se
  - **tvigle**: Интернет-телевидение Tvigle.ru
  - **tvp.pl**
@@ -529,7 +544,7 @@
  - **Vessel**
  - **Vesti**: Вести.Ru
  - **Vevo**
- - **VGTV**
+ - **VGTV**: VGTV and BTTV
  - **vh1.com**
  - **Vice**
  - **Viddler**
@@ -563,6 +578,7 @@
  - **vk.com**
  - **vk.com:user-videos**: vk.com:All of a user's videos
  - **Vodlocker**
+ - **VoiceRepublic**
  - **Vporn**
  - **VRT**
  - **vube**: Vube.com
@@ -587,6 +603,7 @@
  - **XHamster**
  - **XMinus**
  - **XNXX**
+ - **Xstream**
  - **XTube**
  - **XTubeUser**: XTube user profile
  - **Xuite**

@@ -32,11 +32,13 @@ from .brightcove import BrightcoveIE
 from .nbc import NBCSportsVPlayerIE
 from .ooyala import OoyalaIE
 from .rutv import RUTVIE
+from .sportbox import SportBoxEmbedIE
 from .smotri import SmotriIE
 from .condenast import CondeNastIE
 from .udn import UDNEmbedIE
 from .senateisvp import SenateISVPIE
 from .bliptv import BlipTVIE
+from .svt import SVTIE
 
 
 class GenericIE(InfoExtractor):
@@ -218,6 +220,37 @@ class GenericIE(InfoExtractor):
                 'title': 'Охотское море стало целиком российским',
                 'description': 'md5:5ed62483b14663e2a95ebbe115eb8f43',
             },
+            'params': {
+                # m3u8 download
+                'skip_download': True,
+            },
+        },
+        # SportBox embed
+        {
+            'url': 'http://www.vestifinance.ru/articles/25753',
+            'info_dict': {
+                'id': '25753',
+                'title': 'Вести Экономика ― Прямые трансляции с Форума-выставки "Госзаказ-2013"',
+            },
+            'playlist': [{
+                'info_dict': {
+                    'id': '370908',
+                    'title': 'Госзаказ. День 3',
+                    'ext': 'mp4',
+                }
+            }, {
+                'info_dict': {
+                    'id': '370905',
+                    'title': 'Госзаказ. День 2',
+                    'ext': 'mp4',
+                }
+            }, {
+                'info_dict': {
+                    'id': '370902',
+                    'title': 'Госзаказ. День 1',
+                    'ext': 'mp4',
+                }
+            }],
             'params': {
                 # m3u8 download
                 'skip_download': True,
@@ -412,19 +445,6 @@ class GenericIE(InfoExtractor):
                 'upload_date': '20140531',
                 'thumbnail': 're:^https?://.*\.jpg$',
             },
-        },
-        # MLB articles
-        {
-            'url': 'http://m.mlb.com/news/article/118550098/blue-jays-kevin-pillar-goes-spidey-up-the-wall-to-rob-tim-beckham-of-a-homer',
-            'md5': 'b190e70141fb9a1552a85426b4da1b5d',
-            'info_dict': {
-                'id': '75609783',
-                'ext': 'mp4',
-                'title': 'Must C: Pillar climbs for catch',
-                'description': '4/15/15: Blue Jays outfielder Kevin Pillar continues his defensive dominance by climbing the wall in left to rob Tim Beckham of a home run',
-                'timestamp': 1429124820,
-                'upload_date': '20150415',
-            }
         },
         # Wistia embed
         {
@@ -656,6 +676,17 @@ class GenericIE(InfoExtractor):
                 'id': '518726732',
                 'ext': 'mp4',
                 'title': 'Facebook Creates "On This Day" | Crunch Report',
+            },
+        },
+        # SVT embed
+        {
+            'url': 'http://www.svt.se/sport/ishockey/jagr-tacklar-giroux-under-intervjun',
+            'info_dict': {
+                'id': '2900353',
+                'ext': 'flv',
+                'title': 'Här trycker Jagr till Giroux (under SVT-intervjun)',
+                'duration': 27,
+                'age_limit': 0,
             },
         },
         # RSS feed with enclosure
@@ -1091,6 +1122,11 @@ class GenericIE(InfoExtractor):
         if bliptv_url:
             return self.url_result(bliptv_url, 'BlipTV')
 
+        # Look for SVT player
+        svt_url = SVTIE._extract_url(webpage)
+        if svt_url:
+            return self.url_result(svt_url, 'SVT')
+
         # Look for embedded condenast player
         matches = re.findall(
             r'<iframe\s+(?:[a-zA-Z-]+="[^"]+"\s+)*?src="(https?://player\.cnevids\.com/embed/[^"]+")',
@@ -1224,6 +1260,11 @@ class GenericIE(InfoExtractor):
         rutv_url = RUTVIE._extract_url(webpage)
         if rutv_url:
             return self.url_result(rutv_url, 'RUTV')
+
+        # Look for embedded SportBox player
+        sportbox_urls = SportBoxEmbedIE._extract_urls(webpage)
+        if sportbox_urls:
+            return _playlist_from_matches(sportbox_urls, ie='SportBoxEmbed')
 
         # Look for embedded TED player
         mobj = re.search(
@@ -1384,7 +1425,7 @@ class GenericIE(InfoExtractor):
         # Look for Senate ISVP iframe
         senate_isvp_url = SenateISVPIE._search_iframe_url(webpage)
         if senate_isvp_url:
-            return self.url_result(surl, 'SenateISVP')
+            return self.url_result(senate_isvp_url, 'SenateISVP')
 
         def check_video(vurl):
             if YoutubeIE.suitable(vurl):
@@ -1453,7 +1494,7 @@ class GenericIE(InfoExtractor):
                 if refresh_header:
                     found = re.search(REDIRECT_REGEX, refresh_header)
             if found:
-                new_url = found.group(1)
+                new_url = compat_urlparse.urljoin(url, found.group(1))
                 self.report_following_redirect(new_url)
                 return {
                     '_type': 'url',

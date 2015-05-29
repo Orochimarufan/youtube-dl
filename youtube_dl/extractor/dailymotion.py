@@ -52,6 +52,7 @@ class DailymotionIE(DailymotionBaseInfoExtractor):
                 'ext': 'mp4',
                 'uploader': 'IGN',
                 'title': 'Steam Machine Models, Pricing Listed on Steam Store - IGN News',
+                'upload_date': '20150306',
             }
         },
         # Vevo video
@@ -106,9 +107,9 @@ class DailymotionIE(DailymotionBaseInfoExtractor):
         age_limit = self._rta_search(webpage)
 
         video_upload_date = None
-        mobj = re.search(r'<div class="[^"]*uploaded_cont[^"]*" title="[^"]*">([0-9]{2})-([0-9]{2})-([0-9]{4})</div>', webpage)
+        mobj = re.search(r'<meta property="video:release_date" content="([0-9]{4})-([0-9]{2})-([0-9]{2}).+?"/>', webpage)
         if mobj is not None:
-            video_upload_date = mobj.group(3) + mobj.group(2) + mobj.group(1)
+            video_upload_date = mobj.group(1) + mobj.group(2) + mobj.group(3)
 
         embed_url = 'https://www.dailymotion.com/embed/video/%s' % video_id
         embed_request = self._build_request(embed_url)
@@ -224,7 +225,7 @@ class DailymotionPlaylistIE(DailymotionBaseInfoExtractor):
 
 class DailymotionUserIE(DailymotionPlaylistIE):
     IE_NAME = 'dailymotion:user'
-    _VALID_URL = r'https?://(?:www\.)?dailymotion\.[a-z]{2,3}/(?:old/)?user/(?P<user>[^/]+)'
+    _VALID_URL = r'https?://(?:www\.)?dailymotion\.[a-z]{2,3}/(?:(?:old/)?user/)?(?P<user>[^/]+)$'
     _PAGE_TEMPLATE = 'http://www.dailymotion.com/user/%s/%s'
     _TESTS = [{
         'url': 'https://www.dailymotion.com/user/nqtv',
@@ -238,7 +239,8 @@ class DailymotionUserIE(DailymotionPlaylistIE):
     def _real_extract(self, url):
         mobj = re.match(self._VALID_URL, url)
         user = mobj.group('user')
-        webpage = self._download_webpage(url, user)
+        webpage = self._download_webpage(
+            'https://www.dailymotion.com/user/%s' % user, user)
         full_user = unescapeHTML(self._html_search_regex(
             r'<a class="nav-image" title="([^"]+)" href="/%s">' % re.escape(user),
             webpage, 'user'))

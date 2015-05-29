@@ -260,7 +260,6 @@ class YoutubeDL(object):
     The following options are used by the post processors:
     prefer_ffmpeg:     If True, use ffmpeg instead of avconv if both are available,
                        otherwise prefer avconv.
-    exec_cmd:          Arbitrary command to run after downloading
     """
 
     params = None
@@ -760,7 +759,9 @@ class YoutubeDL(object):
             if isinstance(ie_entries, list):
                 n_all_entries = len(ie_entries)
                 if playlistitems:
-                    entries = [ie_entries[i - 1] for i in playlistitems]
+                    entries = [
+                        ie_entries[i - 1] for i in playlistitems
+                        if -n_all_entries <= i - 1 < n_all_entries]
                 else:
                     entries = ie_entries[playliststart:playlistend]
                 n_entries = len(entries)
@@ -1086,8 +1087,11 @@ class YoutubeDL(object):
         req_format = self.params.get('format')
         if req_format is None:
             req_format_list = []
-            if info_dict['extractor'] in ['youtube', 'ted'] and FFmpegMergerPP(self).available:
-                req_format_list.append('bestvideo+bestaudio')
+            if (self.params.get('outtmpl', DEFAULT_OUTTMPL) != '-' and
+                    info_dict['extractor'] in ['youtube', 'ted']):
+                merger = FFmpegMergerPP(self)
+                if merger.available and merger.can_merge():
+                    req_format_list.append('bestvideo+bestaudio')
             req_format_list.append('best')
             req_format = '/'.join(req_format_list)
         formats_to_download = []
@@ -1393,8 +1397,8 @@ class YoutubeDL(object):
                     requested_formats = info_dict['requested_formats']
                     if self.params.get('merge_output_format') is None and not compatible_formats(requested_formats):
                         info_dict['ext'] = 'mkv'
-                        self.report_warning('You have requested formats incompatible for merge. '
-                                            'The formats will be merged into mkv')
+                        self.report_warning(
+                            'Requested formats are incompatible for merge and will be merged into mkv.')
                     # Ensure filename always has a correct extension for successful merge
                     filename = '%s.%s' % (filename_wo_ext, info_dict['ext'])
                     if os.path.exists(encodeFilename(filename)):
@@ -1526,6 +1530,7 @@ class YoutubeDL(object):
             pps_chain.extend(ie_info['__postprocessors'])
         pps_chain.extend(self._pps)
         for pp in pps_chain:
+            files_to_delete = []
             try:
                 files_to_delete, info = pp.run(info)
             except PostProcessingError as e:
@@ -1850,7 +1855,7 @@ class YoutubeDL(object):
             thumb_ext = determine_ext(t['url'], 'jpg')
             suffix = '_%s' % t['id'] if len(thumbnails) > 1 else ''
             thumb_display_id = '%s ' % t['id'] if len(thumbnails) > 1 else ''
-            thumb_filename = os.path.splitext(filename)[0] + suffix + '.' + thumb_ext
+            t['filename'] = thumb_filename = os.path.splitext(filename)[0] + suffix + '.' + thumb_ext
 
             if self.params.get('nooverwrites', False) and os.path.exists(encodeFilename(thumb_filename)):
                 self.to_screen('[%s] %s: Thumbnail %sis already present' %
