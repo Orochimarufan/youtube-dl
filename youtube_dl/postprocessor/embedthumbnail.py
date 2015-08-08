@@ -35,6 +35,11 @@ class EmbedThumbnailPP(FFmpegPostProcessor):
 
         thumbnail_filename = info['thumbnails'][-1]['filename']
 
+        if not os.path.exists(encodeFilename(thumbnail_filename)):
+            self._downloader.report_warning(
+                'Skipping embedding the thumbnail because the file is missing.')
+            return [], info
+
         if info['ext'] == 'mp3':
             options = [
                 '-c', 'copy', '-map', '0', '-map', '1',
@@ -49,7 +54,7 @@ class EmbedThumbnailPP(FFmpegPostProcessor):
             os.remove(encodeFilename(filename))
             os.rename(encodeFilename(temp_filename), encodeFilename(filename))
 
-        elif info['ext'] == 'm4a':
+        elif info['ext'] in ['m4a', 'mp4']:
             if not check_executable('AtomicParsley', ['-v']):
                 raise EmbedThumbnailPPError('AtomicParsley was not found. Please install.')
 
@@ -82,6 +87,6 @@ class EmbedThumbnailPP(FFmpegPostProcessor):
                 os.remove(encodeFilename(filename))
                 os.rename(encodeFilename(temp_filename), encodeFilename(filename))
         else:
-            raise EmbedThumbnailPPError('Only mp3 and m4a are supported for thumbnail embedding for now.')
+            raise EmbedThumbnailPPError('Only mp3 and m4a/mp4 are supported for thumbnail embedding for now.')
 
         return [], info
