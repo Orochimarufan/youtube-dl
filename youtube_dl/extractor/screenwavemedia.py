@@ -1,6 +1,8 @@
 # encoding: utf-8
 from __future__ import unicode_literals
 
+import re
+
 from .common import InfoExtractor
 from ..utils import (
     int_or_none,
@@ -10,8 +12,8 @@ from ..utils import (
 
 
 class ScreenwaveMediaIE(InfoExtractor):
-    _VALID_URL = r'http://player\d?\.screenwavemedia\.com/(?:play/)?[a-zA-Z]+\.php\?[^"]*\bid=(?P<id>.+)'
-
+    _VALID_URL = r'https?://player\d?\.screenwavemedia\.com/(?:play/)?[a-zA-Z]+\.php\?.*\bid=(?P<id>[A-Za-z0-9-]+)'
+    EMBED_PATTERN = r'src=(["\'])(?P<url>(?:https?:)?//player\d?\.screenwavemedia\.com/(?:play/)?[a-zA-Z]+\.php\?.*\bid=.+?)\1'
     _TESTS = [{
         'url': 'http://player.screenwavemedia.com/play/play.php?playerdiv=videoarea&companiondiv=squareAd&id=Cinemassacre-19911',
         'only_matching': True,
@@ -31,34 +33,57 @@ class ScreenwaveMediaIE(InfoExtractor):
             'http://player.screenwavemedia.com/player.js',
             video_id, 'Downloading playerconfig webpage')
 
-        videoserver = self._search_regex(r"\[ipaddress\]\s*=>\s*([\d\.]+)", playerdata, 'videoserver')
+        videoserver = self._search_regex(r'SWMServer\s*=\s*"([\d\.]+)"', playerdata, 'videoserver')
 
         sources = self._parse_json(
             js_to_json(
-                self._search_regex(
-                    r"sources\s*:\s*(\[[^\]]+?\])", playerconfig,
-                    'sources',
-                ).replace(
-                    "' + thisObj.options.videoserver + '",
-                    videoserver
-                ).replace(
-                    "' + playerVidId + '",
-                    video_id
+                re.sub(
+                    r'(?s)/\*.*?\*/', '',
+                    self._search_regex(
+                        r"sources\s*:\s*(\[[^\]]+?\])", playerconfig,
+                        'sources',
+                    ).replace(
+                        "' + thisObj.options.videoserver + '",
+                        videoserver
+                    ).replace(
+                        "' + playerVidId + '",
+                        video_id
+                    )
                 )
             ),
-            video_id
+            video_id, fatal=False
         )
+
+        # Fallback to hardcoded sources if JS changes again
+        if not sources:
+            self.report_warning('Falling back to a hardcoded list of streams')
+            sources = [{
+                'file': 'http://%s/vod/%s_%s.mp4' % (videoserver, video_id, format_id),
+                'type': 'mp4',
+                'label': format_label,
+            } for format_id, format_label in (
+                ('low', '144p Low'), ('med', '160p Med'), ('high', '360p High'), ('hd1', '720p HD1'))]
+            sources.append({
+                'file': 'http://%s/vod/smil:%s.smil/playlist.m3u8' % (videoserver, video_id),
+                'type': 'hls',
+            })
 
         formats = []
         for source in sources:
             if source['type'] == 'hls':
                 formats.extend(self._extract_m3u8_formats(source['file'], video_id))
             else:
+                file_ = source.get('file')
+                if not file_:
+                    continue
                 format_label = source.get('label')
+                format_id = self._search_regex(
+                    r'_(.+?)\.[^.]+$', file_, 'format id', default=None)
                 height = int_or_none(self._search_regex(
                     r'^(\d+)[pP]', format_label, 'height', default=None))
                 formats.append({
                     'url': source['file'],
+                    'format_id': format_id,
                     'format': format_label,
                     'ext': source.get('type'),
                     'height': height,

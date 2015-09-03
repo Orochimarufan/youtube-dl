@@ -33,6 +33,7 @@ from ..utils import (
     int_or_none,
     orderedSet,
     parse_duration,
+    remove_start,
     smuggle_url,
     str_to_int,
     unescapeHTML,
@@ -46,7 +47,7 @@ from ..utils import (
 class YoutubeBaseInfoExtractor(InfoExtractor):
     """Provide base functions for Youtube extractors"""
     _LOGIN_URL = 'https://accounts.google.com/ServiceLogin'
-    _TWOFACTOR_URL = 'https://accounts.google.com/SecondFactor'
+    _TWOFACTOR_URL = 'https://accounts.google.com/signin/challenge'
     _NETRC_MACHINE = 'youtube'
     # If True it will raise an error if no login info is provided
     _LOGIN_REQUIRED = False
@@ -128,40 +129,24 @@ class YoutubeBaseInfoExtractor(InfoExtractor):
         # Two-Factor
         # TODO add SMS and phone call support - these require making a request and then prompting the user
 
-        if re.search(r'(?i)<form[^>]* id="gaia_secondfactorform"', login_results) is not None:
-            tfa_code = self._get_tfa_info()
+        if re.search(r'(?i)<form[^>]* id="challenge"', login_results) is not None:
+            tfa_code = self._get_tfa_info('2-step verification code')
 
-            if tfa_code is None:
-                self._downloader.report_warning('Two-factor authentication required. Provide it with --twofactor <code>')
-                self._downloader.report_warning('(Note that only TOTP (Google Authenticator App) codes work at this time.)')
+            if not tfa_code:
+                self._downloader.report_warning(
+                    'Two-factor authentication required. Provide it either interactively or with --twofactor <code>'
+                    '(Note that only TOTP (Google Authenticator App) codes work at this time.)')
                 return False
 
-            # Unlike the first login form, secTok and timeStmp are both required for the TFA form
+            tfa_code = remove_start(tfa_code, 'G-')
 
-            match = re.search(r'id="secTok"\n\s+value=\'(.+)\'/>', login_results, re.M | re.U)
-            if match is None:
-                self._downloader.report_warning('Failed to get secTok - did the page structure change?')
-            secTok = match.group(1)
-            match = re.search(r'id="timeStmp"\n\s+value=\'(.+)\'/>', login_results, re.M | re.U)
-            if match is None:
-                self._downloader.report_warning('Failed to get timeStmp - did the page structure change?')
-            timeStmp = match.group(1)
+            tfa_form_strs = self._form_hidden_inputs('challenge', login_results)
 
-            tfa_form_strs = {
-                'continue': 'https://www.youtube.com/signin?action_handle_signin=true&feature=sign_in_button&hl=en_US&nomobiletemp=1',
-                'smsToken': '',
-                'smsUserPin': tfa_code,
-                'smsVerifyPin': 'Verify',
+            tfa_form_strs.update({
+                'Pin': tfa_code,
+                'TrustDevice': 'on',
+            })
 
-                'PersistentCookie': 'yes',
-                'checkConnection': '',
-                'checkedDomains': 'youtube',
-                'pstMsg': '1',
-                'secTok': secTok,
-                'timeStmp': timeStmp,
-                'service': 'youtube',
-                'hl': 'en_US',
-            }
             tfa_form = dict((k.encode('utf-8'), v.encode('utf-8')) for k, v in tfa_form_strs.items())
             tfa_data = compat_urllib_parse.urlencode(tfa_form).encode('ascii')
 
@@ -173,8 +158,8 @@ class YoutubeBaseInfoExtractor(InfoExtractor):
             if tfa_results is False:
                 return False
 
-            if re.search(r'(?i)<form[^>]* id="gaia_secondfactorform"', tfa_results) is not None:
-                self._downloader.report_warning('Two-factor code expired. Please try again, or use a one-use backup code instead.')
+            if re.search(r'(?i)<form[^>]* id="challenge"', tfa_results) is not None:
+                self._downloader.report_warning('Two-factor code expired or invalid. Please try again, or use a one-use backup code instead.')
                 return False
             if re.search(r'(?i)<form[^>]* id="gaia_loginform"', tfa_results) is not None:
                 self._downloader.report_warning('unable to log in - did the page structure change?')
@@ -213,11 +198,14 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
                              |(?:                                             # or the v= param in all its forms
                                  (?:(?:watch|movie)(?:_popup)?(?:\.php)?/?)?  # preceding watch(_popup|.php) or nothing (like /?v=xxxx)
                                  (?:\?|\#!?)                                  # the params delimiter ? or # or #!
-                                 (?:.*?&)?                                    # any other preceding param (like /?s=tuff&v=xxxx)
+                                 (?:.*?&)??                                   # any other preceding param (like /?s=tuff&v=xxxx)
                                  v=
                              )
                          ))
-                         |youtu\.be/                                          # just youtu.be/xxxx
+                         |(?:
+                            youtu\.be|                                        # just youtu.be/xxxx
+                            vid\.plus                                         # or vid.plus/xxxx
+                         )/
                          |(?:www\.)?cleanvideosearch\.com/media/action/yt/watch\?videoId=
                          )
                      )?                                                       # all until now is optional -> you can pass the naked ID
@@ -365,6 +353,7 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
                 'description': 'md5:64249768eec3bc4276236606ea996373',
                 'uploader': 'justintimberlakeVEVO',
                 'uploader_id': 'justintimberlakeVEVO',
+                'age_limit': 18,
             }
         },
         {
@@ -379,6 +368,26 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
                 'uploader': 'SET India',
                 'uploader_id': 'setindia'
             }
+        },
+        {
+            'url': 'http://www.youtube.com/watch?v=BaW_jenozKcj&v=UxxajLWwzqY',
+            'note': 'Use the first video ID in the URL',
+            'info_dict': {
+                'id': 'BaW_jenozKc',
+                'ext': 'mp4',
+                'title': 'youtube-dl test video "\'/\\ä↭𝕐',
+                'uploader': 'Philipp Hagemeister',
+                'uploader_id': 'phihag',
+                'upload_date': '20121002',
+                'description': 'test chars:  "\'/\\ä↭𝕐\ntest URL: https://github.com/rg3/youtube-dl/issues/1892\n\nThis is a test video for youtube-dl.\n\nFor more information, contact phihag@phihag.de .',
+                'categories': ['Science & Technology'],
+                'tags': ['youtube-dl'],
+                'like_count': int,
+                'dislike_count': int,
+            },
+            'params': {
+                'skip_download': True,
+            },
         },
         {
             'url': 'http://www.youtube.com/watch?v=a9LDPn-MO4I',
@@ -421,7 +430,7 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
                 'id': 'nfWlot6h_JM',
                 'ext': 'm4a',
                 'title': 'Taylor Swift - Shake It Off',
-                'description': 'md5:2acfda1b285bdd478ccec22f9918199d',
+                'description': 'md5:95f66187cd7c8b2c13eb78e1223b63c3',
                 'uploader': 'TaylorSwiftVEVO',
                 'uploader_id': 'TaylorSwiftVEVO',
                 'upload_date': '20140818',
@@ -455,6 +464,7 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
                 'uploader': 'The Witcher',
                 'uploader_id': 'WitcherGame',
                 'upload_date': '20140605',
+                'age_limit': 18,
             },
         },
         # Age-gate video with encrypted signature
@@ -468,6 +478,7 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
                 'uploader': 'LloydVEVO',
                 'uploader_id': 'LloydVEVO',
                 'upload_date': '20110629',
+                'age_limit': 18,
             },
         },
         # video_info is None (https://github.com/rg3/youtube-dl/issues/4421)
@@ -492,7 +503,7 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
             'info_dict': {
                 'id': 'lqQg6PlCWgI',
                 'ext': 'mp4',
-                'upload_date': '20120731',
+                'upload_date': '20120724',
                 'uploader_id': 'olympic',
                 'description': 'HO09  - Women -  GER-AUS - Hockey - 31 July 2012 - London 2012 Olympic Games',
                 'uploader': 'Olympics',
@@ -521,7 +532,7 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
             'url': 'qEJwOuvDf7I',
             'info_dict': {
                 'id': 'qEJwOuvDf7I',
-                'ext': 'mp4',
+                'ext': 'webm',
                 'title': 'Обсуждение судебной практики по выборам 14 сентября 2014 года в Санкт-Петербурге',
                 'description': '',
                 'upload_date': '20150404',
@@ -616,6 +627,10 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
             'params': {
                 'skip_download': True,
             },
+        },
+        {
+            'url': 'http://vid.plus/FlRa-iH7PGw',
+            'only_matching': True,
         }
     ]
 
@@ -645,7 +660,7 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
 
     def _extract_signature_function(self, video_id, player_url, example_sig):
         id_m = re.match(
-            r'.*?-(?P<id>[a-zA-Z0-9_-]+)(?:/watch_as3|/html5player)?\.(?P<ext>[a-z]+)$',
+            r'.*?-(?P<id>[a-zA-Z0-9_-]+)(?:/watch_as3|/html5player(?:-new)?)?\.(?P<ext>[a-z]+)$',
             player_url)
         if not id_m:
             raise ExtractorError('Cannot identify player %r' % player_url)
@@ -1228,7 +1243,7 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
             encoded_url_map = video_info.get('url_encoded_fmt_stream_map', [''])[0] + ',' + video_info.get('adaptive_fmts', [''])[0]
             if 'rtmpe%3Dyes' in encoded_url_map:
                 raise ExtractorError('rtmpe downloads are not supported, see https://github.com/rg3/youtube-dl/issues/343 for more information.', expected=True)
-            url_map = {}
+            formats = []
             for url_data_str in encoded_url_map.split(','):
                 url_data = compat_parse_qs(url_data_str)
                 if 'itag' not in url_data or 'url' not in url_data:
@@ -1274,7 +1289,7 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
                                 player_desc = 'flash player %s' % player_version
                             else:
                                 player_version = self._search_regex(
-                                    r'html5player-([^/]+?)(?:/html5player)?\.js',
+                                    r'html5player-([^/]+?)(?:/html5player(?:-new)?)?\.js',
                                     player_url,
                                     'html5 player', fatal=False)
                                 player_desc = 'html5 player %s' % player_version
@@ -1288,8 +1303,50 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
                     url += '&signature=' + signature
                 if 'ratebypass' not in url:
                     url += '&ratebypass=yes'
-                url_map[format_id] = url
-            formats = _map_to_format_list(url_map)
+
+                # Some itags are not included in DASH manifest thus corresponding formats will
+                # lack metadata (see https://github.com/rg3/youtube-dl/pull/5993).
+                # Trying to extract metadata from url_encoded_fmt_stream_map entry.
+                mobj = re.search(r'^(?P<width>\d+)[xX](?P<height>\d+)$', url_data.get('size', [''])[0])
+                width, height = (int(mobj.group('width')), int(mobj.group('height'))) if mobj else (None, None)
+                dct = {
+                    'format_id': format_id,
+                    'url': url,
+                    'player_url': player_url,
+                    'filesize': int_or_none(url_data.get('clen', [None])[0]),
+                    'tbr': float_or_none(url_data.get('bitrate', [None])[0], 1000),
+                    'width': width,
+                    'height': height,
+                    'fps': int_or_none(url_data.get('fps', [None])[0]),
+                    'format_note': url_data.get('quality_label', [None])[0] or url_data.get('quality', [None])[0],
+                }
+                type_ = url_data.get('type', [None])[0]
+                if type_:
+                    type_split = type_.split(';')
+                    kind_ext = type_split[0].split('/')
+                    if len(kind_ext) == 2:
+                        kind, ext = kind_ext
+                        dct['ext'] = ext
+                        if kind in ('audio', 'video'):
+                            codecs = None
+                            for mobj in re.finditer(
+                                    r'(?P<key>[a-zA-Z_-]+)=(?P<quote>["\']?)(?P<val>.+?)(?P=quote)(?:;|$)', type_):
+                                if mobj.group('key') == 'codecs':
+                                    codecs = mobj.group('val')
+                                    break
+                            if codecs:
+                                codecs = codecs.split(',')
+                                if len(codecs) == 2:
+                                    acodec, vcodec = codecs[0], codecs[1]
+                                else:
+                                    acodec, vcodec = (codecs[0], 'none') if kind == 'audio' else ('none', codecs[0])
+                                dct.update({
+                                    'acodec': acodec,
+                                    'vcodec': vcodec,
+                                })
+                if format_id in self._formats:
+                    dct.update(self._formats[format_id])
+                formats.append(dct)
         elif video_info.get('hlsvp'):
             manifest_url = video_info['hlsvp'][0]
             url_map = self._extract_from_m3u8(manifest_url, video_id)
@@ -1754,7 +1811,7 @@ class YoutubeSearchURLIE(InfoExtractor):
             r'(?s)<ol[^>]+class="item-section"(.*?)</ol>', webpage, 'result HTML')
 
         part_codes = re.findall(
-            r'(?s)<h3 class="yt-lockup-title">(.*?)</h3>', result_code)
+            r'(?s)<h3[^>]+class="[^"]*yt-lockup-title[^"]*"[^>]*>(.*?)</h3>', result_code)
         entries = []
         for part_code in part_codes:
             part_title = self._html_search_regex(

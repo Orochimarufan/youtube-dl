@@ -14,13 +14,17 @@ from ..compat import (
     compat_urllib_parse,
     compat_urllib_parse_unquote,
     compat_urllib_request,
+    compat_urlparse,
 )
 from ..utils import (
     ExtractorError,
     bytes_to_intlist,
     intlist_to_bytes,
+    int_or_none,
+    remove_end,
     unified_strdate,
     urlencode_postdata,
+    xpath_text,
 )
 from ..aes import (
     aes_cbc_decrypt,
@@ -235,7 +239,9 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             webpage_url = 'http://www.' + mobj.group('url')
 
         webpage = self._download_webpage(webpage_url, video_id, 'Downloading webpage')
-        note_m = self._html_search_regex(r'<div class="showmedia-trailer-notice">(.+?)</div>', webpage, 'trailer-notice', default='')
+        note_m = self._html_search_regex(
+            r'<div class="showmedia-trailer-notice">(.+?)</div>',
+            webpage, 'trailer-notice', default='')
         if note_m:
             raise ExtractorError(note_m)
 
@@ -244,6 +250,9 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             msg = json.loads(mobj.group('msg'))
             if msg.get('type') == 'error':
                 raise ExtractorError('crunchyroll returned error: %s' % msg['message_body'], expected=True)
+
+        if 'To view this, please log in to verify you are 18 or older.' in webpage:
+            self.raise_login_required()
 
         video_title = self._html_search_regex(r'<h1[^>]*>(.+?)</h1>', webpage, 'video_title', flags=re.DOTALL)
         video_title = re.sub(r' {2,}', ' ', video_title)
@@ -279,13 +288,33 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             stream_info = streamdata.find('./{default}preload/stream_info')
             video_url = stream_info.find('./host').text
             video_play_path = stream_info.find('./file').text
-            formats.append({
+            metadata = stream_info.find('./metadata')
+            format_info = {
+                'format': video_format,
+                'format_id': video_format,
+                'height': int_or_none(xpath_text(metadata, './height')),
+                'width': int_or_none(xpath_text(metadata, './width')),
+            }
+
+            if '.fplive.net/' in video_url:
+                video_url = re.sub(r'^rtmpe?://', 'http://', video_url.strip())
+                parsed_video_url = compat_urlparse.urlparse(video_url)
+                direct_video_url = compat_urlparse.urlunparse(parsed_video_url._replace(
+                    netloc='v.lvlt.crcdn.net',
+                    path='%s/%s' % (remove_end(parsed_video_url.path, '/'), video_play_path.split(':')[-1])))
+                if self._is_valid_url(direct_video_url, video_id, video_format):
+                    format_info.update({
+                        'url': direct_video_url,
+                    })
+                    formats.append(format_info)
+                    continue
+
+            format_info.update({
                 'url': video_url,
                 'play_path': video_play_path,
                 'ext': 'flv',
-                'format': video_format,
-                'format_id': video_format,
             })
+            formats.append(format_info)
 
         subtitles = self.extract_subtitles(video_id, webpage)
 

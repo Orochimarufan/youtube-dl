@@ -48,6 +48,7 @@ from .vimeo import VimeoIE
 from .dailymotion import DailymotionCloudIE
 from .onionstudios import OnionStudiosIE
 from .snagfilms import SnagFilmsEmbedIE
+from .screenwavemedia import ScreenwaveMediaIE
 
 
 class GenericIE(InfoExtractor):
@@ -193,6 +194,21 @@ class GenericIE(InfoExtractor):
                 'ext': 'mp4',
                 'title': '571de1fd-47bc-48db-abf9-238872a58d1f',
                 'formats': 'mincount:3',
+            },
+            'params': {
+                'skip_download': True,
+            },
+        },
+        # XSPF playlist from http://www.telegraaf.nl/tv/nieuws/binnenland/24353229/__Tikibad_ontruimd_wegens_brand__.html
+        {
+            'url': 'http://www.telegraaf.nl/xml/playlist/2015/8/7/mZlp2ctYIUEB.xspf',
+            'info_dict': {
+                'id': 'mZlp2ctYIUEB',
+                'ext': 'mp4',
+                'title': 'Tikibad ontruimd wegens brand',
+                'description': 'md5:05ca046ff47b931f9b04855015e163a4',
+                'thumbnail': 're:^https?://.*\.jpg$',
+                'duration': 33,
             },
             'params': {
                 'skip_download': True,
@@ -986,6 +1002,16 @@ class GenericIE(InfoExtractor):
                 'description': 'New experience with Acrobat DC',
                 'duration': 248.667,
             },
+        },
+        # ScreenwaveMedia embed
+        {
+            'url': 'http://www.thecinemasnob.com/the-cinema-snob/a-nightmare-on-elm-street-2-freddys-revenge1',
+            'md5': '24ace5baba0d35d55c6810b51f34e9e0',
+            'info_dict': {
+                'id': 'cinemasnob-55d26273809dd',
+                'ext': 'mp4',
+                'title': 'cinemasnob',
+            },
         }
     ]
 
@@ -1191,13 +1217,15 @@ class GenericIE(InfoExtractor):
 
         self.report_extraction(video_id)
 
-        # Is it an RSS feed or a SMIL file?
+        # Is it an RSS feed, a SMIL file or a XSPF playlist?
         try:
             doc = parse_xml(webpage)
             if doc.tag == 'rss':
                 return self._extract_rss(url, video_id, doc)
             elif re.match(r'^(?:{[^}]+})?smil$', doc.tag):
                 return self._parse_smil(doc, url, video_id)
+            elif doc.tag == '{http://xspf.org/ns/0/}playlist':
+                return self.playlist_result(self._parse_xspf(doc, video_id), video_id)
         except compat_xml_parse_error:
             pass
 
@@ -1701,6 +1729,11 @@ class GenericIE(InfoExtractor):
         if snagfilms_url:
             return self.url_result(snagfilms_url)
 
+        # Look for ScreenwaveMedia embeds
+        mobj = re.search(ScreenwaveMediaIE.EMBED_PATTERN, webpage)
+        if mobj is not None:
+            return self.url_result(unescapeHTML(mobj.group('url')), 'ScreenwaveMedia')
+
         # Look for AdobeTVVideo embeds
         mobj = re.search(
             r'<iframe[^>]+src=[\'"]((?:https?:)?//video\.tv\.adobe\.com/v/\d+[^"]+)[\'"]',
@@ -1799,7 +1832,8 @@ class GenericIE(InfoExtractor):
             # here's a fun little line of code for you:
             video_id = os.path.splitext(video_id)[0]
 
-            if determine_ext(video_url) == 'smil':
+            ext = determine_ext(video_url)
+            if ext == 'smil':
                 entries.append({
                     'id': video_id,
                     'formats': self._extract_smil_formats(video_url, video_id),
@@ -1807,6 +1841,8 @@ class GenericIE(InfoExtractor):
                     'title': video_title,
                     'age_limit': age_limit,
                 })
+            elif ext == 'xspf':
+                return self.playlist_result(self._extract_xspf_playlist(video_url, video_id), video_id)
             else:
                 entries.append({
                     'id': video_id,

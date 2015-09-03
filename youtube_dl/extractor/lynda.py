@@ -11,6 +11,7 @@ from ..compat import (
 )
 from ..utils import (
     ExtractorError,
+    clean_html,
     int_or_none,
 )
 
@@ -70,6 +71,15 @@ class LyndaBaseIE(InfoExtractor):
                     'Confirming log in and log out from another device')
 
         if all(not re.search(p, login_page) for p in ('isLoggedIn\s*:\s*true', r'logout\.aspx', r'>Log out<')):
+            if 'login error' in login_page:
+                mobj = re.search(
+                    r'(?s)<h1[^>]+class="topmost">(?P<title>[^<]+)</h1>\s*<div>(?P<description>.+?)</div>',
+                    login_page)
+                if mobj:
+                    raise ExtractorError(
+                        'lynda returned error: %s - %s'
+                        % (mobj.group('title'), clean_html(mobj.group('description'))),
+                        expected=True)
             raise ExtractorError('Unable to log in')
 
 
@@ -108,9 +118,7 @@ class LyndaIE(LyndaBaseIE):
                 'lynda returned error: %s' % video_json['Message'], expected=True)
 
         if video_json['HasAccess'] is False:
-            raise ExtractorError(
-                'Video %s is only available for members. '
-                % video_id + self._ACCOUNT_CREDENTIALS_HINT, expected=True)
+            self.raise_login_required('Video %s is only available for members' % video_id)
 
         video_id = compat_str(video_json['ID'])
         duration = video_json['DurationInSeconds']

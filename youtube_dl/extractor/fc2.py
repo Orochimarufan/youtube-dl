@@ -15,7 +15,7 @@ from ..utils import (
 
 
 class FC2IE(InfoExtractor):
-    _VALID_URL = r'^http://video\.fc2\.com/(?:[^/]+/)?content/(?P<id>[^/]+)'
+    _VALID_URL = r'^http://video\.fc2\.com/(?:[^/]+/)*content/(?P<id>[^/]+)'
     IE_NAME = 'fc2'
     _NETRC_MACHINE = 'fc2'
     _TESTS = [{
@@ -37,6 +37,9 @@ class FC2IE(InfoExtractor):
             'password': '(snip)',
             'skip': 'requires actual password'
         }
+    }, {
+        'url': 'http://video.fc2.com/en/a/content/20130926eZpARwsF',
+        'only_matching': True,
     }]
 
     def _login(self):
@@ -80,13 +83,13 @@ class FC2IE(InfoExtractor):
 
         title = self._og_search_title(webpage)
         thumbnail = self._og_search_thumbnail(webpage)
-        refer = url.replace('/content/', '/a/content/')
+        refer = url.replace('/content/', '/a/content/') if '/a/content/' not in url else url
 
         mimi = hashlib.md5((video_id + '_gGddgPfeaf_gzyr').encode('utf-8')).hexdigest()
 
         info_url = (
             "http://video.fc2.com/ginfo.php?mimi={1:s}&href={2:s}&v={0:s}&fversion=WIN%2011%2C6%2C602%2C180&from=2&otag=0&upid={0:s}&tk=null&".
-            format(video_id, mimi, compat_urllib_request.quote(refer, safe='').replace('.', '%2E')))
+            format(video_id, mimi, compat_urllib_request.quote(refer, safe=b'').replace('.', '%2E')))
 
         info_webpage = self._download_webpage(
             info_url, video_id, note='Downloading info page')
