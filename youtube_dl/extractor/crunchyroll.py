@@ -31,7 +31,23 @@ from ..aes import (
 )
 
 
-class CrunchyrollIE(InfoExtractor):
+class CrunchyrollBaseIE(InfoExtractor):
+    def _download_webpage(self, url_or_request, video_id, note=None, errnote=None, fatal=True, tries=1, timeout=5, encoding=None):
+        request = (url_or_request if isinstance(url_or_request, compat_urllib_request.Request)
+                   else compat_urllib_request.Request(url_or_request))
+        # Accept-Language must be set explicitly to accept any language to avoid issues
+        # similar to https://github.com/rg3/youtube-dl/issues/6797.
+        # Along with IP address Crunchyroll uses Accept-Language to guess whether georestriction
+        # should be imposed or not (from what I can see it just takes the first language
+        # ignoring the priority and requires it to correspond the IP). By the way this causes
+        # Crunchyroll to not work in georestriction cases in some browsers that don't place
+        # the locale lang first in header. However allowing any language seems to workaround the issue.
+        request.add_header('Accept-Language', '*')
+        return super(CrunchyrollBaseIE, self)._download_webpage(
+            request, video_id, note, errnote, fatal, tries, timeout, encoding)
+
+
+class CrunchyrollIE(CrunchyrollBaseIE):
     _VALID_URL = r'https?://(?:(?P<prefix>www|m)\.)?(?P<url>crunchyroll\.(?:com|fr)/(?:media(?:-|/\?id=)|[^/]*/[^/?&]*?)(?P<video_id>[0-9]+))(?:[/?&]|$)'
     _NETRC_MACHINE = 'crunchyroll'
     _TESTS = [{
@@ -259,10 +275,14 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         video_description = self._html_search_regex(r'"description":"([^"]+)', webpage, 'video_description', default='')
         if not video_description:
             video_description = None
-        video_upload_date = self._html_search_regex(r'<div>Availability for free users:(.+?)</div>', webpage, 'video_upload_date', fatal=False, flags=re.DOTALL)
+        video_upload_date = self._html_search_regex(
+            [r'<div>Availability for free users:(.+?)</div>', r'<div>[^<>]+<span>\s*(.+?\d{4})\s*</span></div>'],
+            webpage, 'video_upload_date', fatal=False, flags=re.DOTALL)
         if video_upload_date:
             video_upload_date = unified_strdate(video_upload_date)
-        video_uploader = self._html_search_regex(r'<div>\s*Publisher:(.+?)</div>', webpage, 'video_uploader', fatal=False, flags=re.DOTALL)
+        video_uploader = self._html_search_regex(
+            r'<a[^>]+href="/publisher/[^"]+"[^>]*>([^<]+)</a>', webpage,
+            'video_uploader', fatal=False)
 
         playerdata_url = compat_urllib_parse_unquote(self._html_search_regex(r'"config_url":"([^"]+)', webpage, 'playerdata_url'))
         playerdata_req = compat_urllib_request.Request(playerdata_url)
@@ -330,7 +350,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         }
 
 
-class CrunchyrollShowPlaylistIE(InfoExtractor):
+class CrunchyrollShowPlaylistIE(CrunchyrollBaseIE):
     IE_NAME = "crunchyroll:playlist"
     _VALID_URL = r'https?://(?:(?P<prefix>www|m)\.)?(?P<url>crunchyroll\.com/(?!(?:news|anime-news|library|forum|launchcalendar|lineup|store|comics|freetrial|login))(?P<id>[\w\-]+))/?$'
 

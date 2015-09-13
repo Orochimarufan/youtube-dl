@@ -347,7 +347,6 @@ from .mtv import (
 )
 from .muenchentv import MuenchenTVIE
 from .musicplayon import MusicPlayOnIE
-from .musicvault import MusicVaultIE
 from .muzu import MuzuTVIE
 from .mwave import MwaveIE
 from .myspace import MySpaceIE, MySpaceAlbumIE
@@ -368,6 +367,9 @@ from .nbc import (
 from .ndr import (
     NDRIE,
     NJoyIE,
+    NDREmbedBaseIE,
+    NDREmbedIE,
+    NJoyEmbedIE,
 )
 from .ndtv import NDTVIE
 from .netzkino import NetzkinoIE
@@ -403,7 +405,11 @@ from .normalboots import NormalbootsIE
 from .nosvideo import NosVideoIE
 from .nova import NovaIE
 from .novamov import NovaMovIE
-from .nowness import NownessIE
+from .nowness import (
+    NownessIE,
+    NownessPlaylistIE,
+    NownessSeriesIE,
+)
 from .nowtv import NowTVIE
 from .nowvideo import NowVideoIE
 from .npo import (
@@ -433,7 +439,6 @@ from .ooyala import (
     OoyalaIE,
     OoyalaExternalIE,
 )
-from .openfilm import OpenFilmIE
 from .orf import (
     ORFTVthekIE,
     ORFOE1IE,

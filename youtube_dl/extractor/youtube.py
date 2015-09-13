@@ -1835,8 +1835,8 @@ class YoutubeShowIE(InfoExtractor):
     _VALID_URL = r'https?://www\.youtube\.com/show/(?P<id>[^?#]*)'
     IE_NAME = 'youtube:show'
     _TESTS = [{
-        'url': 'http://www.youtube.com/show/airdisasters',
-        'playlist_mincount': 3,
+        'url': 'https://www.youtube.com/show/airdisasters',
+        'playlist_mincount': 5,
         'info_dict': {
             'id': 'airdisasters',
             'title': 'Air Disasters',
@@ -1847,7 +1847,7 @@ class YoutubeShowIE(InfoExtractor):
         mobj = re.match(self._VALID_URL, url)
         playlist_id = mobj.group('id')
         webpage = self._download_webpage(
-            url, playlist_id, 'Downloading show webpage')
+            'https://www.youtube.com/show/%s/playlists' % playlist_id, playlist_id, 'Downloading show webpage')
         # There's one playlist for each season of the show
         m_seasons = list(re.finditer(r'href="(/playlist\?list=.*?)"', webpage))
         self.to_screen('%s: Found %s seasons' % (playlist_id, len(m_seasons)))
