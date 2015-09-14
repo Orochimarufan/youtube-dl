@@ -175,6 +175,7 @@ from .fktv import (
     FKTVPosteckeIE,
 )
 from .flickr import FlickrIE
+from .fluffy import FluffyIE
 from .folketinget import FolketingetIE
 from .footyroom import FootyRoomIE
 from .fourtube import FourTubeIE
@@ -480,6 +481,10 @@ from .pornoxo import PornoXOIE
 from .primesharetv import PrimeShareTVIE
 from .promptfile import PromptFileIE
 from .prosiebensat1 import ProSiebenSat1IE
+from .proxer import (
+    ProxerIE,
+    ProxerStreamIE,
+)
 from .puls4 import Puls4IE
 from .pyvideo import PyvideoIE
 from .qqmusic import (
