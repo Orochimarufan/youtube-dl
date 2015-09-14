@@ -175,6 +175,7 @@ from .fktv import (
     FKTVPosteckeIE,
 )
 from .flickr import FlickrIE
+from .fluffy import FluffyIE
 from .folketinget import FolketingetIE
 from .footyroom import FootyRoomIE
 from .fourtube import FourTubeIE
