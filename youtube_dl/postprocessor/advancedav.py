@@ -936,8 +936,8 @@ class AdvancedAVPP(PostProcessor):
         information["filepath"] = filename
         information["filename"] = filename.rsplit(u'/', 1)[-1]
 
-        # NOTE: Should it return False?
-        return True, information
+        # TODO: should return list of files to delete instead of handling deleting itself; but what about conflicts?
+        return [], information
 
     def _run(self, information: MutableMapping):
         """ Helper method to debug exeptions in run() """
