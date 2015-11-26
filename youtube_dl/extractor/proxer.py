@@ -22,7 +22,7 @@ class ProxerStreamIE(InfoExtractor):
 
 class ProxerIE(InfoExtractor):
     IE_NAME = "proxer.me"
-    _VALID_URL = r"https?://proxer.me/watch/(?P<id>\d+/\d+/engsub)"
+    _VALID_URL = r"https?://proxer.me/watch/(?P<id>\d+/\d+/.+ub)"
     
     _streams_re = re.compile(r"var streams = (\[.+\]);")
     _title_re = re.compile(r"<title>(.+) - Proxer.Me</title>")
@@ -35,6 +35,12 @@ class ProxerIE(InfoExtractor):
         },
         {
             "type": "streamcloud2",
+            "ie": "Streamcloud",
+            "preference": 10,
+            "avoid": True,
+        },
+        {
+            "type": "streamcloud",
             "ie": "Streamcloud",
             "preference": 10,
             "avoid": True,
@@ -89,7 +95,7 @@ class ProxerIE(InfoExtractor):
                     t["func"](self, t, stream, result)
                 elif "ie" in stype:
                     ie = self._downloader.get_info_extractor(stype["ie"])
-                    url = stream["replace"].replace("\\/", "/").replace("#", stream["code"])
+                    url = stream["replace" if stream["htype"] == "iframe" else "code"].replace("\\/", "/").replace("#", stream["code"])
                     self._downloader.to_screen("Proxer %s stream: %s" % (stream["type"], url))
                     try:
                         sres = ie.extract(url)
