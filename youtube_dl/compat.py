@@ -11,6 +11,7 @@ import re
 import shlex
 import shutil
 import socket
+import struct
 import subprocess
 import sys
 import itertools
@@ -76,6 +77,11 @@ try:
     from urllib.request import urlretrieve as compat_urlretrieve
 except ImportError:  # Python 2
     from urllib import urlretrieve as compat_urlretrieve
+
+try:
+    from html.parser import HTMLParser as compat_HTMLParser
+except ImportError:  # Python 2
+    from HTMLParser import HTMLParser as compat_HTMLParser
 
 
 try:
@@ -165,6 +171,32 @@ except ImportError:  # Python 2
         return compat_urllib_parse_unquote(string, encoding, errors)
 
 try:
+    from urllib.parse import urlencode as compat_urllib_parse_urlencode
+except ImportError:  # Python 2
+    # Python 2 will choke in urlencode on mixture of byte and unicode strings.
+    # Possible solutions are to either port it from python 3 with all
+    # the friends or manually ensure input query contains only byte strings.
+    # We will stick with latter thus recursively encoding the whole query.
+    def compat_urllib_parse_urlencode(query, doseq=0, encoding='utf-8'):
+        def encode_elem(e):
+            if isinstance(e, dict):
+                e = encode_dict(e)
+            elif isinstance(e, (list, tuple,)):
+                list_e = encode_list(e)
+                e = tuple(list_e) if isinstance(e, tuple) else list_e
+            elif isinstance(e, compat_str):
+                e = e.encode(encoding)
+            return e
+
+        def encode_dict(d):
+            return dict((encode_elem(k), encode_elem(v)) for k, v in d.items())
+
+        def encode_list(l):
+            return [encode_elem(e) for e in l]
+
+        return compat_urllib_parse.urlencode(encode_elem(query), doseq=doseq)
+
+try:
     from urllib.request import DataHandler as compat_urllib_request_DataHandler
 except ImportError:  # Python < 3.4
     # Ported from CPython 98774:1733b3bd46db, Lib/urllib/request.py
@@ -181,20 +213,20 @@ except ImportError:  # Python < 3.4
             # parameter := attribute "=" value
             url = req.get_full_url()
 
-            scheme, data = url.split(":", 1)
-            mediatype, data = data.split(",", 1)
+            scheme, data = url.split(':', 1)
+            mediatype, data = data.split(',', 1)
 
             # even base64 encoded data URLs might be quoted so unquote in any case:
             data = compat_urllib_parse_unquote_to_bytes(data)
-            if mediatype.endswith(";base64"):
+            if mediatype.endswith(';base64'):
                 data = binascii.a2b_base64(data)
                 mediatype = mediatype[:-7]
 
             if not mediatype:
-                mediatype = "text/plain;charset=US-ASCII"
+                mediatype = 'text/plain;charset=US-ASCII'
 
             headers = email.message_from_string(
-                "Content-type: %s\nContent-length: %d\n" % (mediatype, len(data)))
+                'Content-type: %s\nContent-length: %d\n' % (mediatype, len(data)))
 
             return compat_urllib_response.addinfourl(io.BytesIO(data), headers, url)
 
@@ -251,6 +283,16 @@ else:
                 el.text = el.text.decode('utf-8')
         return doc
 
+if sys.version_info < (2, 7):
+    # Here comes the crazy part: In 2.6, if the xpath is a unicode,
+    # .//node does not match if a node is a direct child of . !
+    def compat_xpath(xpath):
+        if isinstance(xpath, compat_str):
+            xpath = xpath.encode('ascii')
+        return xpath
+else:
+    compat_xpath = lambda xpath: xpath
+
 try:
     from urllib.parse import parse_qs as compat_parse_qs
 except ImportError:  # Python 2
@@ -268,7 +310,7 @@ except ImportError:  # Python 2
             nv = name_value.split('=', 1)
             if len(nv) != 2:
                 if strict_parsing:
-                    raise ValueError("bad query field: %r" % (name_value,))
+                    raise ValueError('bad query field: %r' % (name_value,))
                 # Handle case of a control-name with no equal sign
                 if keep_blank_values:
                     nv.append('')
@@ -299,9 +341,9 @@ except ImportError:  # Python 2
         return parsed_result
 
 try:
-    from shlex import quote as shlex_quote
+    from shlex import quote as compat_shlex_quote
 except ImportError:  # Python < 3.3
-    def shlex_quote(s):
+    def compat_shlex_quote(s):
         if re.match(r'^[-_\w./]+$', s):
             return s
         else:
@@ -326,9 +368,15 @@ def compat_ord(c):
         return ord(c)
 
 
+compat_os_name = os._name if os.name == 'java' else os.name
+
+
 if sys.version_info >= (3, 0):
     compat_getenv = os.getenv
     compat_expanduser = os.path.expanduser
+
+    def compat_setenv(key, value, env=os.environ):
+        env[key] = value
 else:
     # Environment variables should be decoded with filesystem encoding.
     # Otherwise it will fail if any non-ASCII characters present (see #3854 #3217 #2918)
@@ -340,13 +388,19 @@ else:
             env = env.decode(get_filesystem_encoding())
         return env
 
+    def compat_setenv(key, value, env=os.environ):
+        def encode(v):
+            from .utils import get_filesystem_encoding
+            return v.encode(get_filesystem_encoding()) if isinstance(v, compat_str) else v
+        env[encode(key)] = encode(value)
+
     # HACK: The default implementations of os.path.expanduser from cpython do not decode
     # environment variables with filesystem encoding. We will work around this by
     # providing adjusted implementations.
     # The following are os.path.expanduser implementations from cpython 2.7.8 stdlib
     # for different platforms with correct environment variables decoding.
 
-    if os.name == 'posix':
+    if compat_os_name == 'posix':
         def compat_expanduser(path):
             """Expand ~ and ~user constructions.  If user or $HOME is unknown,
             do nothing."""
@@ -370,7 +424,7 @@ else:
                 userhome = pwent.pw_dir
             userhome = userhome.rstrip('/')
             return (userhome + path[i:]) or '/'
-    elif os.name == 'nt' or os.name == 'ce':
+    elif compat_os_name == 'nt' or compat_os_name == 'ce':
         def compat_expanduser(path):
             """Expand ~ and ~user constructs.
 
@@ -412,18 +466,6 @@ else:
         print(s)
 
 
-try:
-    subprocess_check_output = subprocess.check_output
-except AttributeError:
-    def subprocess_check_output(*args, **kwargs):
-        assert 'input' not in kwargs
-        p = subprocess.Popen(*args, stdout=subprocess.PIPE, **kwargs)
-        output, _ = p.communicate()
-        ret = p.poll()
-        if ret:
-            raise subprocess.CalledProcessError(ret, p.args, output=output)
-        return output
-
 if sys.version_info < (3, 0) and sys.platform == 'win32':
     def compat_getpass(prompt, *args, **kwargs):
         if isinstance(prompt, compat_str):
@@ -433,7 +475,7 @@ if sys.version_info < (3, 0) and sys.platform == 'win32':
 else:
     compat_getpass = getpass.getpass
 
-# Old 2.6 and 2.7 releases require kwargs to be bytes
+# Python < 2.6.5 require kwargs to be bytes
 try:
     def _testfunc(x):
         pass
@@ -466,7 +508,7 @@ if sys.version_info < (2, 7):
         if err is not None:
             raise err
         else:
-            raise socket.error("getaddrinfo returns an empty list")
+            raise socket.error('getaddrinfo returns an empty list')
 else:
     compat_socket_create_connection = socket.create_connection
 
@@ -539,7 +581,28 @@ if sys.version_info >= (3, 0):
 else:
     from tokenize import generate_tokens as compat_tokenize_tokenize
 
+
+try:
+    struct.pack('!I', 0)
+except TypeError:
+    # In Python 2.6 and 2.7.x < 2.7.7, struct requires a bytes argument
+    # See https://bugs.python.org/issue19099
+    def compat_struct_pack(spec, *args):
+        if isinstance(spec, compat_str):
+            spec = spec.encode('ascii')
+        return struct.pack(spec, *args)
+
+    def compat_struct_unpack(spec, *args):
+        if isinstance(spec, compat_str):
+            spec = spec.encode('ascii')
+        return struct.unpack(spec, *args)
+else:
+    compat_struct_pack = struct.pack
+    compat_struct_unpack = struct.unpack
+
+
 __all__ = [
+    'compat_HTMLParser',
     'compat_HTTPError',
     'compat_basestring',
     'compat_chr',
@@ -556,11 +619,16 @@ __all__ = [
     'compat_itertools_count',
     'compat_kwargs',
     'compat_ord',
+    'compat_os_name',
     'compat_parse_qs',
     'compat_print',
+    'compat_setenv',
+    'compat_shlex_quote',
     'compat_shlex_split',
     'compat_socket_create_connection',
     'compat_str',
+    'compat_struct_pack',
+    'compat_struct_unpack',
     'compat_subprocess_get_DEVNULL',
     'compat_tokenize_tokenize',
     'compat_urllib_error',
@@ -568,6 +636,7 @@ __all__ = [
     'compat_urllib_parse_unquote',
     'compat_urllib_parse_unquote_plus',
     'compat_urllib_parse_unquote_to_bytes',
+    'compat_urllib_parse_urlencode',
     'compat_urllib_parse_urlparse',
     'compat_urllib_request',
     'compat_urllib_request_DataHandler',
@@ -575,7 +644,6 @@ __all__ = [
     'compat_urlparse',
     'compat_urlretrieve',
     'compat_xml_parse_error',
-    'shlex_quote',
-    'subprocess_check_output',
+    'compat_xpath',
     'workaround_optparse_bug9161',
 ]

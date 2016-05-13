@@ -5,9 +5,7 @@ import re
 
 from hashlib import sha1
 from .common import InfoExtractor
-from ..compat import (
-    compat_urllib_parse,
-)
+from ..compat import compat_urllib_parse_urlencode
 from ..utils import (
     ExtractorError,
     determine_ext,
@@ -20,7 +18,7 @@ from ..utils import (
 class ProSiebenSat1IE(InfoExtractor):
     IE_NAME = 'prosiebensat1'
     IE_DESC = 'ProSiebenSat.1 Digital'
-    _VALID_URL = r'https?://(?:www\.)?(?:(?:prosieben|prosiebenmaxx|sixx|sat1|kabeleins|the-voice-of-germany)\.(?:de|at|ch)|ran\.de|fem\.com)/(?P<id>.+)'
+    _VALID_URL = r'https?://(?:www\.)?(?:(?:prosieben|prosiebenmaxx|sixx|sat1|kabeleins|the-voice-of-germany|7tv)\.(?:de|at|ch)|ran\.de|fem\.com)/(?P<id>.+)'
 
     _TESTS = [
         {
@@ -32,7 +30,7 @@ class ProSiebenSat1IE(InfoExtractor):
             'url': 'http://www.prosieben.de/tv/circus-halligalli/videos/218-staffel-2-episode-18-jahresrueckblick-ganze-folge',
             'info_dict': {
                 'id': '2104602',
-                'ext': 'mp4',
+                'ext': 'flv',
                 'title': 'Episode 18 - Staffel 2',
                 'description': 'md5:8733c81b702ea472e069bc48bb658fc1',
                 'upload_date': '20131231',
@@ -138,14 +136,13 @@ class ProSiebenSat1IE(InfoExtractor):
             'url': 'http://www.the-voice-of-germany.de/video/31-andreas-kuemmert-rocket-man-clip',
             'info_dict': {
                 'id': '2572814',
-                'ext': 'mp4',
+                'ext': 'flv',
                 'title': 'Andreas Kümmert: Rocket Man',
                 'description': 'md5:6ddb02b0781c6adf778afea606652e38',
                 'upload_date': '20131017',
                 'duration': 469.88,
             },
             'params': {
-                # rtmp download
                 'skip_download': True,
             },
         },
@@ -153,13 +150,12 @@ class ProSiebenSat1IE(InfoExtractor):
             'url': 'http://www.fem.com/wellness/videos/wellness-video-clip-kurztripps-zum-valentinstag.html',
             'info_dict': {
                 'id': '2156342',
-                'ext': 'mp4',
+                'ext': 'flv',
                 'title': 'Kurztrips zum Valentinstag',
-                'description': 'Romantischer Kurztrip zum Valentinstag? Wir verraten, was sich hier wirklich lohnt.',
+                'description': 'Romantischer Kurztrip zum Valentinstag? Nina Heinemann verrät, was sich hier wirklich lohnt.',
                 'duration': 307.24,
             },
             'params': {
-                # rtmp download
                 'skip_download': True,
             },
         },
@@ -172,12 +168,26 @@ class ProSiebenSat1IE(InfoExtractor):
             },
             'playlist_count': 2,
         },
+        {
+            'url': 'http://www.7tv.de/circus-halligalli/615-best-of-circus-halligalli-ganze-folge',
+            'info_dict': {
+                'id': '4187506',
+                'ext': 'flv',
+                'title': 'Best of Circus HalliGalli',
+                'description': 'md5:8849752efd90b9772c9db6fdf87fb9e9',
+                'upload_date': '20151229',
+            },
+            'params': {
+                'skip_download': True,
+            },
+        },
     ]
 
     _CLIPID_REGEXES = [
         r'"clip_id"\s*:\s+"(\d+)"',
         r'clipid: "(\d+)"',
         r'clip[iI]d=(\d+)',
+        r'clip[iI]d\s*=\s*["\'](\d+)',
         r"'itemImageUrl'\s*:\s*'/dynamic/thumbnails/full/\d+/(\d+)",
     ]
     _TITLE_REGEXES = [
@@ -186,12 +196,16 @@ class ProSiebenSat1IE(InfoExtractor):
         r'<!-- start video -->\s*<h1>(.+?)</h1>',
         r'<h1 class="att-name">\s*(.+?)</h1>',
         r'<header class="module_header">\s*<h2>([^<]+)</h2>\s*</header>',
+        r'<h2 class="video-title" itemprop="name">\s*(.+?)</h2>',
+        r'<div[^>]+id="veeseoTitle"[^>]*>(.+?)</div>',
     ]
     _DESCRIPTION_REGEXES = [
         r'<p itemprop="description">\s*(.+?)</p>',
         r'<div class="videoDecription">\s*<p><strong>Beschreibung</strong>: (.+?)</p>',
         r'<div class="g-plusone" data-size="medium"></div>\s*</div>\s*</header>\s*(.+?)\s*<footer>',
         r'<p class="att-description">\s*(.+?)\s*</p>',
+        r'<p class="video-description" itemprop="description">\s*(.+?)</p>',
+        r'<div[^>]+id="veeseoDescription"[^>]*>(.+?)</div>',
     ]
     _UPLOAD_DATE_REGEXES = [
         r'<meta property="og:published_time" content="(.+?)">',
@@ -219,7 +233,7 @@ class ProSiebenSat1IE(InfoExtractor):
         client_name = 'kolibri-2.0.19-splec4'
         client_location = url
 
-        videos_api_url = 'http://vas.sim-technik.de/vas/live/v2/videos?%s' % compat_urllib_parse.urlencode({
+        videos_api_url = 'http://vas.sim-technik.de/vas/live/v2/videos?%s' % compat_urllib_parse_urlencode({
             'access_token': access_token,
             'client_location': client_location,
             'client_name': client_name,
@@ -240,7 +254,7 @@ class ProSiebenSat1IE(InfoExtractor):
         client_id = g[:2] + sha1(''.join([clip_id, g, access_token, client_location, g, client_name])
                                  .encode('utf-8')).hexdigest()
 
-        sources_api_url = 'http://vas.sim-technik.de/vas/live/v2/videos/%s/sources?%s' % (clip_id, compat_urllib_parse.urlencode({
+        sources_api_url = 'http://vas.sim-technik.de/vas/live/v2/videos/%s/sources?%s' % (clip_id, compat_urllib_parse_urlencode({
             'access_token': access_token,
             'client_id': client_id,
             'client_location': client_location,
@@ -254,7 +268,7 @@ class ProSiebenSat1IE(InfoExtractor):
                                           client_location, source_ids_str, g, client_name])
                                  .encode('utf-8')).hexdigest()
 
-        url_api_url = 'http://vas.sim-technik.de/vas/live/v2/videos/%s/sources/url?%s' % (clip_id, compat_urllib_parse.urlencode({
+        url_api_url = 'http://vas.sim-technik.de/vas/live/v2/videos/%s/sources/url?%s' % (clip_id, compat_urllib_parse_urlencode({
             'access_token': access_token,
             'client_id': client_id,
             'client_location': client_location,

@@ -4,22 +4,30 @@ from __future__ import unicode_literals
 import re
 
 from .common import InfoExtractor
-from ..compat import compat_urllib_parse
 from ..utils import (
     ExtractorError,
-    encode_dict,
     int_or_none,
     sanitized_Request,
+    urlencode_postdata,
 )
 
 
 class XFileShareIE(InfoExtractor):
-    IE_DESC = 'XFileShare based sites: GorillaVid.in, daclips.in, movpod.in, fastvideo.in, realvid.net, filehoot.com and vidto.me'
-    _VALID_URL = r'''(?x)
-        https?://(?P<host>(?:www\.)?
-            (?:daclips\.in|gorillavid\.in|movpod\.in|fastvideo\.in|realvid\.net|filehoot\.com|vidto\.me))/
-        (?:embed-)?(?P<id>[0-9a-zA-Z]+)(?:-[0-9]+x[0-9]+\.html)?
-    '''
+    _SITES = (
+        ('daclips.in', 'DaClips'),
+        ('filehoot.com', 'FileHoot'),
+        ('gorillavid.in', 'GorillaVid'),
+        ('movpod.in', 'MovPod'),
+        ('powerwatch.pw', 'PowerWatch'),
+        ('rapidvideo.ws', 'Rapidvideo.ws'),
+        ('thevideobee.to', 'TheVideoBee'),
+        ('vidto.me', 'Vidto'),
+        ('streamin.to', 'Streamin.To'),
+    )
+
+    IE_DESC = 'XFileShare based sites: %s' % ', '.join(list(zip(*_SITES))[1])
+    _VALID_URL = (r'https?://(?P<host>(?:www\.)?(?:%s))/(?:embed-)?(?P<id>[0-9a-zA-Z]+)'
+                  % '|'.join(re.escape(site) for site in list(zip(*_SITES))[0]))
 
     _FILE_NOT_FOUND_REGEX = r'>(?:404 - )?File Not Found<'
 
@@ -45,25 +53,6 @@ class XFileShareIE(InfoExtractor):
             'thumbnail': 're:http://.*\.jpg',
         }
     }, {
-        # video with countdown timeout
-        'url': 'http://fastvideo.in/1qmdn1lmsmbw',
-        'md5': '8b87ec3f6564a3108a0e8e66594842ba',
-        'info_dict': {
-            'id': '1qmdn1lmsmbw',
-            'ext': 'mp4',
-            'title': 'Man of Steel - Trailer',
-            'thumbnail': 're:http://.*\.jpg',
-        },
-    }, {
-        'url': 'http://realvid.net/ctn2y6p2eviw',
-        'md5': 'b2166d2cf192efd6b6d764c18fd3710e',
-        'info_dict': {
-            'id': 'ctn2y6p2eviw',
-            'ext': 'flv',
-            'title': 'rdx 1955',
-            'thumbnail': 're:http://.*\.jpg',
-        },
-    }, {
         'url': 'http://movpod.in/0wguyyxi1yca',
         'only_matching': True,
     }, {
@@ -81,6 +70,13 @@ class XFileShareIE(InfoExtractor):
             'ext': 'mp4',
             'title': 'test'
         }
+    }, {
+        'url': 'http://powerwatch.pw/duecjibvicbu',
+        'info_dict': {
+            'id': 'duecjibvicbu',
+            'ext': 'mp4',
+            'title': 'Big Buck Bunny trailer',
+        },
     }]
 
     def _real_extract(self, url):
@@ -102,7 +98,7 @@ class XFileShareIE(InfoExtractor):
             if countdown:
                 self._sleep(countdown, video_id)
 
-            post = compat_urllib_parse.urlencode(encode_dict(fields))
+            post = urlencode_postdata(fields)
 
             req = sanitized_Request(url, post)
             req.add_header('Content-type', 'application/x-www-form-urlencoded')
@@ -112,6 +108,7 @@ class XFileShareIE(InfoExtractor):
         title = (self._search_regex(
             [r'style="z-index: [0-9]+;">([^<]+)</span>',
              r'<td nowrap>([^<]+)</td>',
+             r'h4-fine[^>]*>([^<]+)<',
              r'>Watch (.+) ',
              r'<h2 class="video-page-head">([^<]+)</h2>'],
             webpage, 'title', default=None) or self._og_search_title(webpage)).strip()

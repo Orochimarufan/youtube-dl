@@ -11,10 +11,9 @@ from .common import (
 from ..compat import (
     compat_str,
     compat_urlparse,
-    compat_urllib_parse,
+    compat_urllib_parse_urlencode,
 )
 from ..utils import (
-    encode_dict,
     ExtractorError,
     int_or_none,
     unified_strdate,
@@ -222,7 +221,7 @@ class SoundcloudIE(InfoExtractor):
             full_title = track_id
             token = mobj.group('secret_token')
             if token:
-                info_json_url += "&secret_token=" + token
+                info_json_url += '&secret_token=' + token
         elif mobj.group('player'):
             query = compat_urlparse.parse_qs(compat_urlparse.urlparse(url).query)
             real_url = query['url'][0]
@@ -384,27 +383,24 @@ class SoundcloudUserIE(SoundcloudIE):
         resource = mobj.group('rsrc') or 'all'
         base_url = self._BASE_URL_MAP[resource] % user['id']
 
-        next_href = None
+        COMMON_QUERY = {
+            'limit': 50,
+            'client_id': self._CLIENT_ID,
+            'linked_partitioning': '1',
+        }
+
+        query = COMMON_QUERY.copy()
+        query['offset'] = 0
+
+        next_href = base_url + '?' + compat_urllib_parse_urlencode(query)
 
         entries = []
         for i in itertools.count():
-            if not next_href:
-                data = compat_urllib_parse.urlencode({
-                    'offset': i * 50,
-                    'limit': 50,
-                    'client_id': self._CLIENT_ID,
-                    'linked_partitioning': '1',
-                    'representation': 'speedy',
-                })
-                next_href = base_url + '?' + data
-
             response = self._download_json(
                 next_href, uploader, 'Downloading track page %s' % (i + 1))
 
             collection = response['collection']
-
             if not collection:
-                self.to_screen('%s: End page received' % uploader)
                 break
 
             def resolve_permalink_url(candidates):
@@ -419,12 +415,15 @@ class SoundcloudUserIE(SoundcloudIE):
                 if permalink_url:
                     entries.append(self.url_result(permalink_url))
 
-            if 'next_href' in response:
-                next_href = response['next_href']
-                if not next_href:
-                    break
-            else:
-                next_href = None
+            next_href = response.get('next_href')
+            if not next_href:
+                break
+
+            parsed_next_href = compat_urlparse.urlparse(response['next_href'])
+            qs = compat_urlparse.parse_qs(parsed_next_href.query)
+            qs.update(COMMON_QUERY)
+            next_href = compat_urlparse.urlunparse(
+                parsed_next_href._replace(query=compat_urllib_parse_urlencode(qs, True)))
 
         return {
             '_type': 'playlist',
@@ -460,7 +459,7 @@ class SoundcloudPlaylistIE(SoundcloudIE):
         if token:
             data_dict['secret_token'] = token
 
-        data = compat_urllib_parse.urlencode(data_dict)
+        data = compat_urllib_parse_urlencode(data_dict)
         data = self._download_json(
             base_url + data, playlist_id, 'Downloading playlist')
 
@@ -500,7 +499,7 @@ class SoundcloudSearchIE(SearchInfoExtractor, SoundcloudIE):
         query['client_id'] = self._CLIENT_ID
         query['linked_partitioning'] = '1'
         query['offset'] = 0
-        data = compat_urllib_parse.urlencode(encode_dict(query))
+        data = compat_urllib_parse_urlencode(query)
         next_url = '{0}{1}?{2}'.format(self._API_V2_BASE, endpoint, data)
 
         collected_results = 0

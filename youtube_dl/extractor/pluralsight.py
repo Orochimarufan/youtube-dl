@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 
+import re
 import json
 import random
 import collections
@@ -7,14 +8,15 @@ import collections
 from .common import InfoExtractor
 from ..compat import (
     compat_str,
-    compat_urllib_parse,
     compat_urlparse,
 )
 from ..utils import (
     ExtractorError,
     int_or_none,
     parse_duration,
+    qualities,
     sanitized_Request,
+    urlencode_postdata,
 )
 
 
@@ -62,8 +64,8 @@ class PluralsightIE(PluralsightBaseIE):
         login_form = self._hidden_inputs(login_page)
 
         login_form.update({
-            'Username': username.encode('utf-8'),
-            'Password': password.encode('utf-8'),
+            'Username': username,
+            'Password': password,
         })
 
         post_url = self._search_regex(
@@ -74,7 +76,7 @@ class PluralsightIE(PluralsightBaseIE):
             post_url = compat_urlparse.urljoin(self._LOGIN_URL, post_url)
 
         request = sanitized_Request(
-            post_url, compat_urllib_parse.urlencode(login_form).encode('utf-8'))
+            post_url, urlencode_postdata(login_form))
         request.add_header('Content-Type', 'application/x-www-form-urlencoded')
 
         response = self._download_webpage(
@@ -140,14 +142,27 @@ class PluralsightIE(PluralsightBaseIE):
             'low': {'width': 640, 'height': 480},
             'medium': {'width': 848, 'height': 640},
             'high': {'width': 1024, 'height': 768},
+            'high-widescreen': {'width': 1280, 'height': 720},
         }
+
+        QUALITIES_PREFERENCE = ('low', 'medium', 'high', 'high-widescreen',)
+        quality_key = qualities(QUALITIES_PREFERENCE)
 
         AllowedQuality = collections.namedtuple('AllowedQuality', ['ext', 'qualities'])
 
         ALLOWED_QUALITIES = (
-            AllowedQuality('webm', ('high',)),
-            AllowedQuality('mp4', ('low', 'medium', 'high',)),
+            AllowedQuality('webm', ['high', ]),
+            AllowedQuality('mp4', ['low', 'medium', 'high', ]),
         )
+
+        # Some courses also offer widescreen resolution for high quality (see
+        # https://github.com/rg3/youtube-dl/issues/7766)
+        widescreen = True if re.search(
+            r'courseSupportsWidescreenVideoFormats\s*:\s*true', webpage) else False
+        best_quality = 'high-widescreen' if widescreen else 'high'
+        if widescreen:
+            for allowed_quality in ALLOWED_QUALITIES:
+                allowed_quality.qualities.append(best_quality)
 
         # In order to minimize the number of calls to ViewClip API and reduce
         # the probability of being throttled or banned by Pluralsight we will request
@@ -157,19 +172,19 @@ class PluralsightIE(PluralsightBaseIE):
         else:
             def guess_allowed_qualities():
                 req_format = self._downloader.params.get('format') or 'best'
-                req_format_split = req_format.split('-')
+                req_format_split = req_format.split('-', 1)
                 if len(req_format_split) > 1:
                     req_ext, req_quality = req_format_split
                     for allowed_quality in ALLOWED_QUALITIES:
                         if req_ext == allowed_quality.ext and req_quality in allowed_quality.qualities:
                             return (AllowedQuality(req_ext, (req_quality, )), )
                 req_ext = 'webm' if self._downloader.params.get('prefer_free_formats') else 'mp4'
-                return (AllowedQuality(req_ext, ('high', )), )
+                return (AllowedQuality(req_ext, (best_quality, )), )
             allowed_qualities = guess_allowed_qualities()
 
         formats = []
-        for ext, qualities in allowed_qualities:
-            for quality in qualities:
+        for ext, qualities_ in allowed_qualities:
+            for quality in qualities_:
                 f = QUALITIES[quality].copy()
                 clip_post = {
                     'a': author,
@@ -205,6 +220,7 @@ class PluralsightIE(PluralsightBaseIE):
                     'url': clip_url,
                     'ext': ext,
                     'format_id': format_id,
+                    'quality': quality_key(quality),
                 })
                 formats.append(f)
         self._sort_formats(formats)
@@ -216,7 +232,7 @@ class PluralsightIE(PluralsightBaseIE):
         # { a = author, cn = clip_id, lc = end, m = name }
 
         return {
-            'id': clip['clipName'],
+            'id': clip.get('clipName') or clip['name'],
             'title': '%s - %s' % (module['title'], clip['title']),
             'duration': int_or_none(clip.get('duration')) or parse_duration(clip.get('formattedDuration')),
             'creator': author,
@@ -263,13 +279,18 @@ class PluralsightCourseIE(PluralsightBaseIE):
             course_id, 'Downloading course data JSON')
 
         entries = []
-        for module in course_data:
+        for num, module in enumerate(course_data, 1):
             for clip in module.get('clips', []):
                 player_parameters = clip.get('playerParameters')
                 if not player_parameters:
                     continue
-                entries.append(self.url_result(
-                    '%s/training/player?%s' % (self._API_BASE, player_parameters),
-                    'Pluralsight'))
+                entries.append({
+                    '_type': 'url_transparent',
+                    'url': '%s/training/player?%s' % (self._API_BASE, player_parameters),
+                    'ie_key': PluralsightIE.ie_key(),
+                    'chapter': module.get('title'),
+                    'chapter_number': num,
+                    'chapter_id': module.get('moduleRef'),
+                })
 
         return self.playlist_result(entries, course_id, title, description)

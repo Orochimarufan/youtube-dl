@@ -30,14 +30,14 @@ class AudiomackIE(InfoExtractor):
         # audiomack wrapper around soundcloud song
         {
             'add_ie': ['Soundcloud'],
-            'url': 'http://www.audiomack.com/song/xclusiveszone/take-kare',
+            'url': 'http://www.audiomack.com/song/hip-hop-daily/black-mamba-freestyle',
             'info_dict': {
-                'id': '172419696',
+                'id': '258901379',
                 'ext': 'mp3',
-                'description': 'md5:1fc3272ed7a635cce5be1568c2822997',
-                'title': 'Young Thug ft Lil Wayne - Take Kare',
-                'uploader': 'Young Thug World',
-                'upload_date': '20141016',
+                'description': 'mamba day freestyle for the legend Kobe Bryant ',
+                'title': 'Black Mamba Freestyle [Prod. By Danny Wolf]',
+                'uploader': 'ILOVEMAKONNEN',
+                'upload_date': '20160414',
             }
         },
     ]
@@ -56,7 +56,7 @@ class AudiomackIE(InfoExtractor):
 
         # API is inconsistent with errors
         if 'url' not in api_response or not api_response['url'] or 'error' in api_response:
-            raise ExtractorError('Invalid url %s', url)
+            raise ExtractorError('Invalid url %s' % url)
 
         # Audiomack wraps a lot of soundcloud tracks in their branded wrapper
         # if so, pass the work off to the soundcloud extractor
