@@ -3,6 +3,10 @@ from __future__ import unicode_literals
 
 from .abc import ABCIE
 from .abc7news import Abc7NewsIE
+from .abcnews import (
+    AbcNewsIE,
+    AbcNewsVideoIE,
+)
 from .academicearth import AcademicEarthCourseIE
 from .acast import (
     ACastIE,
@@ -17,6 +21,7 @@ from .adobetv import (
 )
 from .adultswim import AdultSwimIE
 from .aenetworks import AENetworksIE
+from .afreecatv import AfreecaTVIE
 from .aftonbladet import AftonbladetIE
 from .airmozilla import AirMozillaIE
 from .aljazeera import AlJazeeraIE
@@ -52,6 +57,7 @@ from .arte import (
     ArteTVDDCIE,
     ArteTVMagazineIE,
     ArteTVEmbedIE,
+    ArteTVPlaylistIE,
 )
 from .atresplayer import AtresPlayerIE
 from .atttechchannel import ATTTechChannelIE
@@ -107,6 +113,7 @@ from .cbc import (
     CBCPlayerIE,
 )
 from .cbs import CBSIE
+from .cbslocal import CBSLocalIE
 from .cbsinteractive import CBSInteractiveIE
 from .cbsnews import (
     CBSNewsIE,
@@ -124,7 +131,6 @@ from .chirbit import (
     ChirbitProfileIE,
 )
 from .cinchcast import CinchcastIE
-from .cinemassacre import CinemassacreIE
 from .cliprs import ClipRsIE
 from .clipfish import ClipfishIE
 from .cliphunter import CliphunterIE
@@ -139,7 +145,7 @@ from .cnn import (
     CNNBlogsIE,
     CNNArticleIE,
 )
-from .collegehumor import CollegeHumorIE
+from .coub import CoubIE
 from .collegerama import CollegeRamaIE
 from .comedycentral import ComedyCentralIE, ComedyCentralShowsIE
 from .comcarcoff import ComCarCoffIE
@@ -228,6 +234,7 @@ from .everyonesmixtape import EveryonesMixtapeIE
 from .exfm import ExfmIE
 from .expotv import ExpoTVIE
 from .extremetube import ExtremeTubeIE
+from .eyedotv import EyedoTVIE
 from .facebook import FacebookIE
 from .faz import FazIE
 from .fc2 import FC2IE
@@ -241,6 +248,7 @@ from .flickr import FlickrIE
 from .fluffy import FluffyIE
 from .folketinget import FolketingetIE
 from .footyroom import FootyRoomIE
+from .formula1 import Formula1IE
 from .fourtube import FourTubeIE
 from .fox import FOXIE
 from .foxgay import FoxgayIE
@@ -285,6 +293,7 @@ from .globo import (
     GloboArticleIE,
 )
 from .godtube import GodTubeIE
+from .godtv import GodTVIE
 from .goldenmoustache import GoldenMoustacheIE
 from .golem import GolemIE
 from .googledrive import GoogleDriveIE
@@ -368,6 +377,7 @@ from .kuwo import (
 )
 from .la7 import LA7IE
 from .laola1tv import Laola1TvIE
+from .learnr import LearnrIE
 from .lecture2go import Lecture2GoIE
 from .lemonde import LemondeIE
 from .leeco import (
@@ -375,6 +385,7 @@ from .leeco import (
     LePlaylistIE,
     LetvCloudIE,
 )
+from .libraryofcongress import LibraryOfCongressIE
 from .libsyn import LibsynIE
 from .lifenews import (
     LifeNewsIE,
@@ -393,6 +404,7 @@ from .livestream import (
     LivestreamShortenerIE,
 )
 from .lnkgo import LnkGoIE
+from .localnews8 import LocalNews8IE
 from .lovehomeporn import LoveHomePornIE
 from .lrt import LRTIE
 from .lynda import (
@@ -616,6 +628,10 @@ from .qqmusic import (
     QQMusicPlaylistIE,
 )
 from .r7 import R7IE
+from .radiocanada import (
+    RadioCanadaIE,
+    RadioCanadaAudioVideoIE,
+)
 from .radiode import RadioDeIE
 from .radiojavan import RadioJavanIE
 from .radiobremen import RadioBremenIE
@@ -629,11 +645,16 @@ from .rds import RDSIE
 from .redtube import RedTubeIE
 from .regiotv import RegioTVIE
 from .restudy import RestudyIE
+from .reuters import ReutersIE
 from .reverbnation import ReverbNationIE
-from .revision3 import Revision3IE
+from .revision3 import (
+    Revision3EmbedIE,
+    Revision3IE,
+)
 from .rice import RICEIE
 from .ringtv import RingTVIE
 from .ro220 import Ro220IE
+from .rockstargames import RockstarGamesIE
 from .rottentomatoes import RottenTomatoesIE
 from .roxwel import RoxwelIE
 from .rtbf import RTBFIE
@@ -669,7 +690,9 @@ from .screencast import ScreencastIE
 from .screencastomatic import ScreencastOMaticIE
 from .screenjunkies import ScreenJunkiesIE
 from .screenwavemedia import ScreenwaveMediaIE, TeamFourIE
+from .seeker import SeekerIE
 from .senateisvp import SenateISVPIE
+from .sendtonews import SendtoNewsIE
 from .servingsys import ServingSysIE
 from .sexu import SexuIE
 from .shahid import ShahidIE
@@ -760,6 +783,7 @@ from .telecinco import TelecincoIE
 from .telegraaf import TelegraafIE
 from .telemb import TeleMBIE
 from .teletask import TeleTaskIE
+from .telewebion import TelewebionIE
 from .testurl import TestURLIE
 from .tf1 import TF1IE
 from .theintercept import TheInterceptIE
@@ -772,6 +796,7 @@ from .thesixtyone import TheSixtyOneIE
 from .thestar import TheStarIE
 from .thisamericanlife import ThisAmericanLifeIE
 from .thisav import ThisAVIE
+from .threeqsdn import ThreeQSDNIE
 from .tinypic import TinyPicIE
 from .tlc import TlcDeIE
 from .tmz import (
@@ -824,7 +849,10 @@ from .tvc import (
 )
 from .tvigle import TvigleIE
 from .tvland import TVLandIE
-from .tvp import TvpIE, TvpSeriesIE
+from .tvp import (
+    TVPIE,
+    TVPSeriesIE,
+)
 from .tvplay import TVPlayIE
 from .tweakers import TweakersIE
 from .twentyfourvideo import TwentyFourVideoIE
@@ -840,6 +868,7 @@ from .twitch import (
     TwitchProfileIE,
     TwitchPastBroadcastsIE,
     TwitchStreamIE,
+    TwitchClipsIE,
 )
 from .twitter import (
     TwitterCardIE,
@@ -856,7 +885,10 @@ from .unistra import UnistraIE
 from .urort import UrortIE
 from .usatoday import USATodayIE
 from .ustream import UstreamIE, UstreamChannelIE
-from .ustudio import UstudioIE
+from .ustudio import (
+    UstudioIE,
+    UstudioEmbedIE,
+)
 from .varzesh3 import Varzesh3IE
 from .vbox7 import Vbox7IE
 from .veehd import VeeHDIE
@@ -888,6 +920,7 @@ from .videomore import (
 )
 from .videopremium import VideoPremiumIE
 from .videott import VideoTtIE
+from .vidio import VidioIE
 from .vidme import (
     VidmeIE,
     VidmeUserIE,
@@ -933,26 +966,29 @@ from .vporn import VpornIE
 from .vrt import VRTIE
 from .vube import VubeIE
 from .vuclip import VuClipIE
-from .vulture import VultureIE
 from .walla import WallaIE
-from .washingtonpost import WashingtonPostIE
+from .washingtonpost import (
+    WashingtonPostIE,
+    WashingtonPostArticleIE,
+)
 from .wat import WatIE
 from .watchindianporn import WatchIndianPornIE
 from .wdr import (
     WDRIE,
     WDRMobileIE,
-    WDRMausIE,
 )
 from .webofstories import (
     WebOfStoriesIE,
     WebOfStoriesPlaylistIE,
 )
-from .weibo import WeiboIE
 from .weiqitv import WeiqiTVIE
 from .wimp import WimpIE
 from .wistia import WistiaIE
 from .worldstarhiphop import WorldStarHipHopIE
-from .wrzuta import WrzutaIE
+from .wrzuta import (
+    WrzutaIE,
+    WrzutaPlaylistIE,
+)
 from .wsj import WSJIE
 from .xbef import XBefIE
 from .xboxclips import XboxClipsIE
@@ -988,7 +1024,10 @@ from .yesjapan import YesJapanIE
 from .yinyuetai import YinYueTaiIE
 from .ynet import YnetIE
 from .youjizz import YouJizzIE
-from .youku import YoukuIE
+from .youku import (
+    YoukuIE,
+    YoukuShowIE,
+)
 from .youporn import YouPornIE
 from .yourupload import YourUploadIE
 from .youtube import (
