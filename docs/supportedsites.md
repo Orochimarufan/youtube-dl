@@ -45,7 +45,6 @@
  - **archive.org**: archive.org videos
  - **ARD**
  - **ARD:mediathek**
- - **ARD:mediathek**: Saarländischer Rundfunk
  - **arte.tv**
  - **arte.tv:+7**
  - **arte.tv:cinema**
@@ -74,6 +73,8 @@
  - **bbc**: BBC
  - **bbc.co.uk**: BBC iPlayer
  - **bbc.co.uk:article**: BBC articles
+ - **bbc.co.uk:iplayer:playlist**
+ - **bbc.co.uk:playlist**
  - **BeatportPro**
  - **Beeg**
  - **BehindKink**
@@ -104,6 +105,8 @@
  - **canalc2.tv**
  - **Canalplus**: canalplus.fr, piwiplus.fr and d8.tv
  - **Canvas**
+ - **CarambaTV**
+ - **CarambaTVPage**
  - **CBC**
  - **CBCPlayer**
  - **CBS**
@@ -124,6 +127,7 @@
  - **cliphunter**
  - **ClipRs**
  - **Clipsyndicate**
+ - **CloserToTruth**
  - **cloudtime**: CloudTime
  - **Cloudy**
  - **Clubic**
@@ -148,6 +152,8 @@
  - **CSNNE**
  - **CSpan**: C-SPAN
  - **CtsNews**: 華視新聞
+ - **CTV**
+ - **CTVNews**
  - **culturebox.francetvinfo.fr**
  - **CultureUnplugged**
  - **CWTV**
@@ -236,6 +242,7 @@
  - **FreeVideo**
  - **Funimation**
  - **FunnyOrDie**
+ - **Fusion**
  - **GameInformer**
  - **Gamekings**
  - **GameOne**
@@ -243,7 +250,6 @@
  - **Gamersyde**
  - **GameSpot**
  - **GameStar**
- - **Gametrailers**
  - **Gazeta**
  - **GDCVault**
  - **generic**: Generic downloader that works on some sites
@@ -269,6 +275,7 @@
  - **Helsinki**: helsinki.fi
  - **HentaiStigma**
  - **HistoricFilms**
+ - **history:topic**: History.com Topic
  - **hitbox**
  - **hitbox:live**
  - **HornBunny**
@@ -355,6 +362,7 @@
  - **MatchTV**
  - **MDR**: MDR.DE and KiKA
  - **media.ccc.de**
+ - **META**
  - **metacafe**
  - **Metacritic**
  - **Mgoon**
@@ -381,7 +389,7 @@
  - **MovieFap**
  - **Moviezine**
  - **MPORA**
- - **MSNBC**
+ - **MSN**
  - **MTV**
  - **mtv.de**
  - **mtviggy.com**
@@ -432,8 +440,10 @@
  - **nhl.com:videocenter**
  - **nhl.com:videocenter:category**: NHL videocenter category
  - **nick.com**
+ - **nick.de**
  - **niconico**: ニコニコ動画
  - **NiconicoPlaylist**
+ - **NineCNineMedia**
  - **njoy**: N-JOY
  - **njoy:embed**
  - **Noco**
@@ -497,8 +507,9 @@
  - **plus.google**: Google Plus
  - **pluzz.francetv.fr**
  - **podomatic**
+ - **PolskieRadio**
  - **PornHd**
- - **PornHub**
+ - **PornHub**: PornHub and Thumbzilla
  - **PornHubPlaylist**
  - **PornHubUserVideos**
  - **Pornotube**
@@ -516,6 +527,7 @@
  - **qqmusic:singer**: QQ音乐 - 歌手
  - **qqmusic:toplist**: QQ音乐 - 排行榜
  - **R7**
+ - **R7Article**
  - **radio.de**
  - **radiobremen**
  - **radiocanada**
@@ -581,8 +593,10 @@
  - **Shared**: shared.sx and vivo.sx
  - **ShareSix**
  - **Sina**
+ - **SixPlay**
+ - **skynewsarabia:article**
  - **skynewsarabia:video**
- - **skynewsarabia:video**
+ - **SkySports**
  - **Slideshare**
  - **Slutload**
  - **smotri**: Smotri.com
@@ -614,6 +628,7 @@
  - **SportBoxEmbed**
  - **SportDeutschland**
  - **Sportschau**
+ - **sr:mediathek**: Saarländischer Rundfunk
  - **SRGSSR**
  - **SRGSSRPlay**: srf.ch, rts.ch, rsi.ch, rtr.ch and swissinfo.ch play sites
  - **SSA**
@@ -714,6 +729,7 @@
  - **UDNEmbed**: 聯合影音
  - **Unistra**
  - **Urort**: NRK P3 Urørt
+ - **URPlay**
  - **USAToday**
  - **ustream**
  - **ustream:channel**
@@ -731,6 +747,7 @@
  - **vh1.com**
  - **Vice**
  - **ViceShow**
+ - **Vidbit**
  - **Viddler**
  - **video.google:search**: Google Video search
  - **video.mit.edu**

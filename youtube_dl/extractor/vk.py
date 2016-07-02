@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 
 import re
 import json
+import sys
 
 from .common import InfoExtractor
 from ..compat import compat_str
@@ -10,7 +11,6 @@ from ..utils import (
     ExtractorError,
     int_or_none,
     orderedSet,
-    sanitized_Request,
     str_to_int,
     unescapeHTML,
     unified_strdate,
@@ -27,12 +27,12 @@ class VKIE(InfoExtractor):
                     https?://
                         (?:
                             (?:
-                                (?:m\.)?vk\.com/video_|
+                                (?:(?:m|new)\.)?vk\.com/video_|
                                 (?:www\.)?daxab.com/
                             )
                             ext\.php\?(?P<embed_query>.*?\boid=(?P<oid>-?\d+).*?\bid=(?P<id>\d+).*)|
                             (?:
-                                (?:m\.)?vk\.com/(?:.+?\?.*?z=)?video|
+                                (?:(?:m|new)\.)?vk\.com/(?:.+?\?.*?z=)?video|
                                 (?:www\.)?daxab.com/embed/
                             )
                             (?P<videoid>-?\d+_\d+)(?:.*\blist=(?P<list_id>[\da-f]+))?
@@ -182,6 +182,10 @@ class VKIE(InfoExtractor):
             # pladform embed
             'url': 'https://vk.com/video-76116461_171554880',
             'only_matching': True,
+        },
+        {
+            'url': 'http://new.vk.com/video205387401_165548505',
+            'only_matching': True,
         }
     ]
 
@@ -190,7 +194,7 @@ class VKIE(InfoExtractor):
         if username is None:
             return
 
-        login_page = self._download_webpage(
+        login_page, url_handle = self._download_webpage_handle(
             'https://vk.com', None, 'Downloading login page')
 
         login_form = self._hidden_inputs(login_page)
@@ -200,11 +204,26 @@ class VKIE(InfoExtractor):
             'pass': password.encode('cp1251'),
         })
 
-        request = sanitized_Request(
-            'https://login.vk.com/?act=login',
-            urlencode_postdata(login_form))
+        # https://new.vk.com/ serves two same remixlhk cookies in Set-Cookie header
+        # and expects the first one to be set rather than second (see
+        # https://github.com/rg3/youtube-dl/issues/9841#issuecomment-227871201).
+        # As of RFC6265 the newer one cookie should be set into cookie store
+        # what actually happens.
+        # We will workaround this VK issue by resetting the remixlhk cookie to
+        # the first one manually.
+        cookies = url_handle.headers.get('Set-Cookie')
+        if sys.version_info[0] >= 3:
+            cookies = cookies.encode('iso-8859-1')
+        cookies = cookies.decode('utf-8')
+        remixlhk = re.search(r'remixlhk=(.+?);.*?\bdomain=(.+?)(?:[,;]|$)', cookies)
+        if remixlhk:
+            value, domain = remixlhk.groups()
+            self._set_cookie(domain, 'remixlhk', value)
+
         login_page = self._download_webpage(
-            request, None, note='Logging in as %s' % username)
+            'https://login.vk.com/?act=login', None,
+            note='Logging in as %s' % username,
+            data=urlencode_postdata(login_form))
 
         if re.search(r'onLoginFailed', login_page):
             raise ExtractorError(
@@ -339,7 +358,7 @@ class VKIE(InfoExtractor):
 class VKUserVideosIE(InfoExtractor):
     IE_NAME = 'vk:uservideos'
     IE_DESC = "VK - User's Videos"
-    _VALID_URL = r'https?://vk\.com/videos(?P<id>-?[0-9]+)(?!\?.*\bz=video)(?:[/?#&]|$)'
+    _VALID_URL = r'https?://(?:(?:m|new)\.)?vk\.com/videos(?P<id>-?[0-9]+)(?!\?.*\bz=video)(?:[/?#&]|$)'
     _TEMPLATE_URL = 'https://vk.com/videos'
     _TESTS = [{
         'url': 'http://vk.com/videos205387401',
@@ -353,6 +372,12 @@ class VKUserVideosIE(InfoExtractor):
         'only_matching': True,
     }, {
         'url': 'http://vk.com/videos-97664626?section=all',
+        'only_matching': True,
+    }, {
+        'url': 'http://m.vk.com/videos205387401',
+        'only_matching': True,
+    }, {
+        'url': 'http://new.vk.com/videos205387401',
         'only_matching': True,
     }]
 
