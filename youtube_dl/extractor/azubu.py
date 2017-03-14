@@ -11,7 +11,7 @@ from ..utils import (
 
 
 class AzubuIE(InfoExtractor):
-    _VALID_URL = r'https?://(?:www\.)?azubu\.tv/[^/]+#!/play/(?P<id>\d+)'
+    _VALID_URL = r'https?://(?:www\.)?azubu\.(?:tv|uol.com.br)/[^/]+#!/play/(?P<id>\d+)'
     _TESTS = [
         {
             'url': 'http://www.azubu.tv/GSL#!/play/15575/2014-hot6-cup-last-big-match-ro8-day-1',
@@ -21,7 +21,7 @@ class AzubuIE(InfoExtractor):
                 'ext': 'mp4',
                 'title': '2014 HOT6 CUP LAST BIG MATCH Ro8 Day 1',
                 'description': 'md5:d06bdea27b8cc4388a90ad35b5c66c01',
-                'thumbnail': 're:^https?://.*\.jpe?g',
+                'thumbnail': r're:^https?://.*\.jpe?g',
                 'timestamp': 1417523507.334,
                 'upload_date': '20141202',
                 'duration': 9988.7,
@@ -38,7 +38,7 @@ class AzubuIE(InfoExtractor):
                 'ext': 'mp4',
                 'title': 'Fnatic at Worlds 2014: Toyz - "I love Rekkles, he has amazing mechanics"',
                 'description': 'md5:4a649737b5f6c8b5c5be543e88dc62af',
-                'thumbnail': 're:^https?://.*\.jpe?g',
+                'thumbnail': r're:^https?://.*\.jpe?g',
                 'timestamp': 1410530893.320,
                 'upload_date': '20140912',
                 'duration': 172.385,
@@ -46,6 +46,7 @@ class AzubuIE(InfoExtractor):
                 'uploader_id': 272749,
                 'view_count': int,
             },
+            'skip': 'Channel offline',
         },
     ]
 
@@ -56,21 +57,25 @@ class AzubuIE(InfoExtractor):
             'http://www.azubu.tv/api/video/%s' % video_id, video_id)['data']
 
         title = data['title'].strip()
-        description = data['description']
-        thumbnail = data['thumbnail']
-        view_count = data['view_count']
-        uploader = data['user']['username']
-        uploader_id = data['user']['id']
+        description = data.get('description')
+        thumbnail = data.get('thumbnail')
+        view_count = data.get('view_count')
+        user = data.get('user', {})
+        uploader = user.get('username')
+        uploader_id = user.get('id')
 
         stream_params = json.loads(data['stream_params'])
 
-        timestamp = float_or_none(stream_params['creationDate'], 1000)
-        duration = float_or_none(stream_params['length'], 1000)
+        timestamp = float_or_none(stream_params.get('creationDate'), 1000)
+        duration = float_or_none(stream_params.get('length'), 1000)
 
         renditions = stream_params.get('renditions') or []
         video = stream_params.get('FLVFullLength') or stream_params.get('videoFullLength')
         if video:
             renditions.append(video)
+
+        if not renditions and not user.get('channel', {}).get('is_live', True):
+            raise ExtractorError('%s said: channel is offline.' % self.IE_NAME, expected=True)
 
         formats = [{
             'url': fmt['url'],
@@ -98,12 +103,15 @@ class AzubuIE(InfoExtractor):
 
 
 class AzubuLiveIE(InfoExtractor):
-    _VALID_URL = r'https?://www.azubu.tv/(?P<id>[^/]+)$'
+    _VALID_URL = r'https?://(?:www\.)?azubu\.(?:tv|uol.com.br)/(?P<id>[^/]+)$'
 
-    _TEST = {
+    _TESTS = [{
         'url': 'http://www.azubu.tv/MarsTVMDLen',
         'only_matching': True,
-    }
+    }, {
+        'url': 'http://azubu.uol.com.br/adolfz',
+        'only_matching': True,
+    }]
 
     def _real_extract(self, url):
         user = self._match_id(url)

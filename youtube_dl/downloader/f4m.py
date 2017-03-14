@@ -196,6 +196,11 @@ def build_fragments_list(boot_info):
     first_frag_number = fragment_run_entry_table[0]['first']
     fragments_counter = itertools.count(first_frag_number)
     for segment, fragments_count in segment_run_table['segment_run']:
+        # In some live HDS streams (for example Rai), `fragments_count` is
+        # abnormal and causing out-of-memory errors. It's OK to change the
+        # number of fragments for live streams as they are updated periodically
+        if fragments_count == 4294967295 and boot_info['live']:
+            fragments_count = 2
         for _ in range(fragments_count):
             res.append((segment, next(fragments_counter)))
 
@@ -309,7 +314,8 @@ class F4mFD(FragmentFD):
         man_url = info_dict['url']
         requested_bitrate = info_dict.get('tbr')
         self.to_screen('[%s] Downloading f4m manifest' % self.FD_NAME)
-        urlh = self.ydl.urlopen(man_url)
+
+        urlh = self.ydl.urlopen(self._prepare_url(info_dict, man_url))
         man_url = urlh.geturl()
         # Some manifests may be malformed, e.g. prosiebensat1 generated manifests
         # (see https://github.com/rg3/youtube-dl/issues/6215#issuecomment-121704244
@@ -329,7 +335,11 @@ class F4mFD(FragmentFD):
 
         base_url = compat_urlparse.urljoin(man_url, media.attrib['url'])
         bootstrap_node = doc.find(_add_ns('bootstrapInfo'))
-        boot_info, bootstrap_url = self._parse_bootstrap_node(bootstrap_node, base_url)
+        # From Adobe F4M 3.0 spec:
+        # The <baseURL> element SHALL be the base URL for all relative
+        # (HTTP-based) URLs in the manifest. If <baseURL> is not present, said
+        # URLs should be relative to the location of the containing document.
+        boot_info, bootstrap_url = self._parse_bootstrap_node(bootstrap_node, man_url)
         live = boot_info['live']
         metadata_node = media.find(_add_ns('metadata'))
         if metadata_node is not None:
@@ -378,7 +388,10 @@ class F4mFD(FragmentFD):
             url_parsed = base_url_parsed._replace(path=base_url_parsed.path + name, query='&'.join(query))
             frag_filename = '%s-%s' % (ctx['tmpfilename'], name)
             try:
-                success = ctx['dl'].download(frag_filename, {'url': url_parsed.geturl()})
+                success = ctx['dl'].download(frag_filename, {
+                    'url': url_parsed.geturl(),
+                    'http_headers': info_dict.get('http_headers'),
+                })
                 if not success:
                     return False
                 (down, frag_sanitized) = sanitize_open(frag_filename, 'rb')
