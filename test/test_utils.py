@@ -33,18 +33,26 @@ from youtube_dl.utils import (
     ExtractorError,
     find_xpath_attr,
     fix_xml_ampersands,
+    get_element_by_class,
+    get_element_by_attribute,
+    get_elements_by_class,
+    get_elements_by_attribute,
     InAdvancePagedList,
     intlist_to_bytes,
     is_html,
     js_to_json,
     limit_length,
+    mimetype2ext,
+    month_by_name,
     ohdave_rsa_encrypt,
     OnDemandPagedList,
     orderedSet,
+    parse_age_limit,
     parse_duration,
     parse_filesize,
     parse_count,
     parse_iso8601,
+    pkcs1pad,
     read_batch_urls,
     sanitize_filename,
     sanitize_path,
@@ -65,6 +73,8 @@ from youtube_dl.utils import (
     uppercase_escape,
     lowercase_escape,
     url_basename,
+    base_url,
+    urljoin,
     urlencode_postdata,
     urshift,
     update_url_query,
@@ -80,6 +90,7 @@ from youtube_dl.utils import (
     cli_option,
     cli_valueless_option,
     cli_bool_option,
+    parse_codecs,
 )
 from youtube_dl.compat import (
     compat_chr,
@@ -287,6 +298,10 @@ class TestUtil(unittest.TestCase):
         self.assertEqual(unified_strdate('25-09-2014'), '20140925')
         self.assertEqual(unified_strdate('27.02.2016 17:30'), '20160227')
         self.assertEqual(unified_strdate('UNKNOWN DATE FORMAT'), None)
+        self.assertEqual(unified_strdate('Feb 7, 2016 at 6:35 pm'), '20160207')
+        self.assertEqual(unified_strdate('July 15th, 2013'), '20130715')
+        self.assertEqual(unified_strdate('September 1st, 2013'), '20130901')
+        self.assertEqual(unified_strdate('Sep 2nd, 2013'), '20130902')
 
     def test_unified_timestamps(self):
         self.assertEqual(unified_timestamp('December 21, 2010'), 1292889600)
@@ -306,6 +321,8 @@ class TestUtil(unittest.TestCase):
         self.assertEqual(unified_timestamp('25-09-2014'), 1411603200)
         self.assertEqual(unified_timestamp('27.02.2016 17:30'), 1456594200)
         self.assertEqual(unified_timestamp('UNKNOWN DATE FORMAT'), None)
+        self.assertEqual(unified_timestamp('May 16, 2016 11:15 PM'), 1463440500)
+        self.assertEqual(unified_timestamp('Feb 7, 2016 at 6:35 pm'), 1454870100)
 
     def test_determine_ext(self):
         self.assertEqual(determine_ext('http://example.com/foo/bar.mp4/?download'), 'mp4')
@@ -405,6 +422,12 @@ class TestUtil(unittest.TestCase):
         self.assertEqual(res_url, url)
         self.assertEqual(res_data, None)
 
+        smug_url = smuggle_url(url, {'a': 'b'})
+        smug_smug_url = smuggle_url(smug_url, {'c': 'd'})
+        res_url, res_data = unsmuggle_url(smug_smug_url)
+        self.assertEqual(res_url, url)
+        self.assertEqual(res_data, {'a': 'b', 'c': 'd'})
+
     def test_shell_quote(self):
         args = ['ffmpeg', '-i', encodeFilename('ñ€ß\'.mp4')]
         self.assertEqual(shell_quote(args), """ffmpeg -i 'ñ€ß'"'"'.mp4'""")
@@ -422,6 +445,47 @@ class TestUtil(unittest.TestCase):
         self.assertEqual(
             url_basename('http://media.w3.org/2010/05/sintel/trailer.mp4'),
             'trailer.mp4')
+
+    def test_base_url(self):
+        self.assertEqual(base_url('http://foo.de/'), 'http://foo.de/')
+        self.assertEqual(base_url('http://foo.de/bar'), 'http://foo.de/')
+        self.assertEqual(base_url('http://foo.de/bar/'), 'http://foo.de/bar/')
+        self.assertEqual(base_url('http://foo.de/bar/baz'), 'http://foo.de/bar/')
+        self.assertEqual(base_url('http://foo.de/bar/baz?x=z/x/c'), 'http://foo.de/bar/')
+
+    def test_urljoin(self):
+        self.assertEqual(urljoin('http://foo.de/', '/a/b/c.txt'), 'http://foo.de/a/b/c.txt')
+        self.assertEqual(urljoin(b'http://foo.de/', '/a/b/c.txt'), 'http://foo.de/a/b/c.txt')
+        self.assertEqual(urljoin('http://foo.de/', b'/a/b/c.txt'), 'http://foo.de/a/b/c.txt')
+        self.assertEqual(urljoin(b'http://foo.de/', b'/a/b/c.txt'), 'http://foo.de/a/b/c.txt')
+        self.assertEqual(urljoin('//foo.de/', '/a/b/c.txt'), '//foo.de/a/b/c.txt')
+        self.assertEqual(urljoin('http://foo.de/', 'a/b/c.txt'), 'http://foo.de/a/b/c.txt')
+        self.assertEqual(urljoin('http://foo.de', '/a/b/c.txt'), 'http://foo.de/a/b/c.txt')
+        self.assertEqual(urljoin('http://foo.de', 'a/b/c.txt'), 'http://foo.de/a/b/c.txt')
+        self.assertEqual(urljoin('http://foo.de/', 'http://foo.de/a/b/c.txt'), 'http://foo.de/a/b/c.txt')
+        self.assertEqual(urljoin('http://foo.de/', '//foo.de/a/b/c.txt'), '//foo.de/a/b/c.txt')
+        self.assertEqual(urljoin(None, 'http://foo.de/a/b/c.txt'), 'http://foo.de/a/b/c.txt')
+        self.assertEqual(urljoin(None, '//foo.de/a/b/c.txt'), '//foo.de/a/b/c.txt')
+        self.assertEqual(urljoin('', 'http://foo.de/a/b/c.txt'), 'http://foo.de/a/b/c.txt')
+        self.assertEqual(urljoin(['foobar'], 'http://foo.de/a/b/c.txt'), 'http://foo.de/a/b/c.txt')
+        self.assertEqual(urljoin('http://foo.de/', None), None)
+        self.assertEqual(urljoin('http://foo.de/', ''), None)
+        self.assertEqual(urljoin('http://foo.de/', ['foobar']), None)
+        self.assertEqual(urljoin('http://foo.de/a/b/c.txt', '.././../d.txt'), 'http://foo.de/d.txt')
+
+    def test_parse_age_limit(self):
+        self.assertEqual(parse_age_limit(None), None)
+        self.assertEqual(parse_age_limit(False), None)
+        self.assertEqual(parse_age_limit('invalid'), None)
+        self.assertEqual(parse_age_limit(0), 0)
+        self.assertEqual(parse_age_limit(18), 18)
+        self.assertEqual(parse_age_limit(21), 21)
+        self.assertEqual(parse_age_limit(22), None)
+        self.assertEqual(parse_age_limit('18'), 18)
+        self.assertEqual(parse_age_limit('18+'), 18)
+        self.assertEqual(parse_age_limit('PG-13'), 13)
+        self.assertEqual(parse_age_limit('TV-14'), 14)
+        self.assertEqual(parse_age_limit('TV-MA'), 17)
 
     def test_parse_duration(self):
         self.assertEqual(parse_duration(None), None)
@@ -453,6 +517,7 @@ class TestUtil(unittest.TestCase):
         self.assertEqual(parse_duration('1 hour 3 minutes'), 3780)
         self.assertEqual(parse_duration('87 Min.'), 5220)
         self.assertEqual(parse_duration('PT1H0.040S'), 3600.04)
+        self.assertEqual(parse_duration('PT00H03M30SZ'), 210)
 
     def test_fix_xml_ampersands(self):
         self.assertEqual(
@@ -601,6 +666,45 @@ class TestUtil(unittest.TestCase):
             limit_length('foo bar baz asd', 12).startswith('foo bar'))
         self.assertTrue('...' in limit_length('foo bar baz asd', 12))
 
+    def test_mimetype2ext(self):
+        self.assertEqual(mimetype2ext(None), None)
+        self.assertEqual(mimetype2ext('video/x-flv'), 'flv')
+        self.assertEqual(mimetype2ext('application/x-mpegURL'), 'm3u8')
+        self.assertEqual(mimetype2ext('text/vtt'), 'vtt')
+        self.assertEqual(mimetype2ext('text/vtt;charset=utf-8'), 'vtt')
+        self.assertEqual(mimetype2ext('text/html; charset=utf-8'), 'html')
+
+    def test_month_by_name(self):
+        self.assertEqual(month_by_name(None), None)
+        self.assertEqual(month_by_name('December', 'en'), 12)
+        self.assertEqual(month_by_name('décembre', 'fr'), 12)
+        self.assertEqual(month_by_name('December'), 12)
+        self.assertEqual(month_by_name('décembre'), None)
+        self.assertEqual(month_by_name('Unknown', 'unknown'), None)
+
+    def test_parse_codecs(self):
+        self.assertEqual(parse_codecs(''), {})
+        self.assertEqual(parse_codecs('avc1.77.30, mp4a.40.2'), {
+            'vcodec': 'avc1.77.30',
+            'acodec': 'mp4a.40.2',
+        })
+        self.assertEqual(parse_codecs('mp4a.40.2'), {
+            'vcodec': 'none',
+            'acodec': 'mp4a.40.2',
+        })
+        self.assertEqual(parse_codecs('mp4a.40.5,avc1.42001e'), {
+            'vcodec': 'avc1.42001e',
+            'acodec': 'mp4a.40.5',
+        })
+        self.assertEqual(parse_codecs('avc3.640028'), {
+            'vcodec': 'avc3.640028',
+            'acodec': 'none',
+        })
+        self.assertEqual(parse_codecs(', h264,,newcodec,aac'), {
+            'vcodec': 'h264',
+            'acodec': 'aac',
+        })
+
     def test_escape_rfc3986(self):
         reserved = "!*'();:@&=+$,/?#[]"
         unreserved = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.~'
@@ -665,6 +769,9 @@ class TestUtil(unittest.TestCase):
         inp = '''{"foo":101}'''
         self.assertEqual(js_to_json(inp), '''{"foo":101}''')
 
+        inp = '''{"duration": "00:01:07"}'''
+        self.assertEqual(js_to_json(inp), '''{"duration": "00:01:07"}''')
+
     def test_js_to_json_edgecases(self):
         on = js_to_json("{abc_def:'1\\'\\\\2\\\\\\'3\"4'}")
         self.assertEqual(json.loads(on), {"abc_def": "1'\\2\\'3\"4"})
@@ -685,11 +792,26 @@ class TestUtil(unittest.TestCase):
         on = js_to_json('["abc", "def",]')
         self.assertEqual(json.loads(on), ['abc', 'def'])
 
+        on = js_to_json('[/*comment\n*/"abc"/*comment\n*/,/*comment\n*/"def",/*comment\n*/]')
+        self.assertEqual(json.loads(on), ['abc', 'def'])
+
+        on = js_to_json('[//comment\n"abc" //comment\n,//comment\n"def",//comment\n]')
+        self.assertEqual(json.loads(on), ['abc', 'def'])
+
         on = js_to_json('{"abc": "def",}')
+        self.assertEqual(json.loads(on), {'abc': 'def'})
+
+        on = js_to_json('{/*comment\n*/"abc"/*comment\n*/:/*comment\n*/"def"/*comment\n*/,/*comment\n*/}')
         self.assertEqual(json.loads(on), {'abc': 'def'})
 
         on = js_to_json('{ 0: /* " \n */ ",]" , }')
         self.assertEqual(json.loads(on), {'0': ',]'})
+
+        on = js_to_json('{ /*comment\n*/0/*comment\n*/: /* " \n */ ",]" , }')
+        self.assertEqual(json.loads(on), {'0': ',]'})
+
+        on = js_to_json('{ 0: // comment\n1 }')
+        self.assertEqual(json.loads(on), {'0': 1})
 
         on = js_to_json(r'["<p>x<\/p>"]')
         self.assertEqual(json.loads(on), ['<p>x</p>'])
@@ -700,13 +822,25 @@ class TestUtil(unittest.TestCase):
         on = js_to_json("['a\\\nb']")
         self.assertEqual(json.loads(on), ['ab'])
 
+        on = js_to_json("/*comment\n*/[/*comment\n*/'a\\\nb'/*comment\n*/]/*comment\n*/")
+        self.assertEqual(json.loads(on), ['ab'])
+
         on = js_to_json('{0xff:0xff}')
+        self.assertEqual(json.loads(on), {'255': 255})
+
+        on = js_to_json('{/*comment\n*/0xff/*comment\n*/:/*comment\n*/0xff/*comment\n*/}')
         self.assertEqual(json.loads(on), {'255': 255})
 
         on = js_to_json('{077:077}')
         self.assertEqual(json.loads(on), {'63': 63})
 
+        on = js_to_json('{/*comment\n*/077/*comment\n*/:/*comment\n*/077/*comment\n*/}')
+        self.assertEqual(json.loads(on), {'63': 63})
+
         on = js_to_json('{42:42}')
+        self.assertEqual(json.loads(on), {'42': 42})
+
+        on = js_to_json('{/*comment\n*/42/*comment\n*/:/*comment\n*/42/*comment\n*/}')
         self.assertEqual(json.loads(on), {'42': 42})
 
     def test_extract_attributes(self):
@@ -770,7 +904,10 @@ class TestUtil(unittest.TestCase):
         self.assertEqual(parse_filesize('2 MiB'), 2097152)
         self.assertEqual(parse_filesize('5 GB'), 5000000000)
         self.assertEqual(parse_filesize('1.2Tb'), 1200000000000)
+        self.assertEqual(parse_filesize('1.2tb'), 1200000000000)
         self.assertEqual(parse_filesize('1,24 KB'), 1240)
+        self.assertEqual(parse_filesize('1,24 kb'), 1240)
+        self.assertEqual(parse_filesize('8.5 megabytes'), 8500000)
 
     def test_parse_count(self):
         self.assertEqual(parse_count(None), None)
@@ -921,6 +1058,7 @@ The first line
         self.assertEqual(cli_option({'proxy': '127.0.0.1:3128'}, '--proxy', 'proxy'), ['--proxy', '127.0.0.1:3128'])
         self.assertEqual(cli_option({'proxy': None}, '--proxy', 'proxy'), [])
         self.assertEqual(cli_option({}, '--proxy', 'proxy'), [])
+        self.assertEqual(cli_option({'retries': 10}, '--retries', 'retries'), ['--retries', '10'])
 
     def test_cli_valueless_option(self):
         self.assertEqual(cli_valueless_option(
@@ -970,6 +1108,14 @@ The first line
             ohdave_rsa_encrypt(b'aa111222', e, N),
             '726664bd9a23fd0c70f9f1b84aab5e3905ce1e45a584e9cbcf9bcc7510338fc1986d6c599ff990d923aa43c51c0d9013cd572e13bc58f4ae48f2ed8c0b0ba881')
 
+    def test_pkcs1pad(self):
+        data = [1, 2, 3]
+        padded_data = pkcs1pad(data, 32)
+        self.assertEqual(padded_data[:2], [0, 2])
+        self.assertEqual(padded_data[28:], [0, 1, 2, 3])
+
+        self.assertRaises(ValueError, pkcs1pad, data, 8)
+
     def test_encode_base_n(self):
         self.assertEqual(encode_base_n(0, 30), '0')
         self.assertEqual(encode_base_n(80, 30), '2k')
@@ -984,6 +1130,41 @@ The first line
     def test_urshift(self):
         self.assertEqual(urshift(3, 1), 1)
         self.assertEqual(urshift(-3, 1), 2147483646)
+
+    def test_get_element_by_class(self):
+        html = '''
+            <span class="foo bar">nice</span>
+        '''
+
+        self.assertEqual(get_element_by_class('foo', html), 'nice')
+        self.assertEqual(get_element_by_class('no-such-class', html), None)
+
+    def test_get_element_by_attribute(self):
+        html = '''
+            <span class="foo bar">nice</span>
+        '''
+
+        self.assertEqual(get_element_by_attribute('class', 'foo bar', html), 'nice')
+        self.assertEqual(get_element_by_attribute('class', 'foo', html), None)
+        self.assertEqual(get_element_by_attribute('class', 'no-such-foo', html), None)
+
+    def test_get_elements_by_class(self):
+        html = '''
+            <span class="foo bar">nice</span><span class="foo bar">also nice</span>
+        '''
+
+        self.assertEqual(get_elements_by_class('foo', html), ['nice', 'also nice'])
+        self.assertEqual(get_elements_by_class('no-such-class', html), [])
+
+    def test_get_elements_by_attribute(self):
+        html = '''
+            <span class="foo bar">nice</span><span class="foo bar">also nice</span>
+        '''
+
+        self.assertEqual(get_elements_by_attribute('class', 'foo bar', html), ['nice', 'also nice'])
+        self.assertEqual(get_elements_by_attribute('class', 'foo', html), [])
+        self.assertEqual(get_elements_by_attribute('class', 'no-such-foo', html), [])
+
 
 if __name__ == '__main__':
     unittest.main()

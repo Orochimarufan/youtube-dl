@@ -48,6 +48,9 @@ class TestInfoExtractor(unittest.TestCase):
         self.assertEqual(ie._og_search_property('foobar', html), 'Foo')
         self.assertEqual(ie._og_search_property('test1', html), 'foo > < bar')
         self.assertEqual(ie._og_search_property('test2', html), 'foo >//< bar')
+        self.assertEqual(ie._og_search_property(('test0', 'test1'), html), 'foo > < bar')
+        self.assertRaises(RegexNotFoundError, ie._og_search_property, 'test0', html, None, fatal=True)
+        self.assertRaises(RegexNotFoundError, ie._og_search_property, ('test0', 'test00'), html, None, fatal=True)
 
     def test_html_search_meta(self):
         ie = self.ie
@@ -80,6 +83,7 @@ class TestInfoExtractor(unittest.TestCase):
         uri = encode_data_uri(b'{"foo": invalid}', 'application/json')
         self.assertRaises(ExtractorError, self.ie._download_json, uri, None)
         self.assertEqual(self.ie._download_json(uri, None, fatal=False), None)
+
 
 if __name__ == '__main__':
     unittest.main()

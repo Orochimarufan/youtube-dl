@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+# coding: utf-8
 from __future__ import unicode_literals
 
 import re
@@ -9,6 +9,7 @@ import hashlib
 
 
 from .once import OnceIE
+from .adobepass import AdobePassIE
 from ..compat import (
     compat_parse_qs,
     compat_urllib_parse_urlparse,
@@ -32,7 +33,9 @@ _x = lambda p: xpath_with_ns(p, {'smil': default_ns})
 
 class ThePlatformBaseIE(OnceIE):
     def _extract_theplatform_smil(self, smil_url, video_id, note='Downloading SMIL data'):
-        meta = self._download_xml(smil_url, video_id, note=note, query={'format': 'SMIL'})
+        meta = self._download_xml(
+            smil_url, video_id, note=note, query={'format': 'SMIL'},
+            headers=self.geo_verification_headers())
         error_element = find_xpath_attr(meta, _x('.//smil:ref'), 'src')
         if error_element is not None and error_element.attrib['src'].startswith(
                 'http://link.theplatform.com/s/errorFiles/Unavailable.'):
@@ -62,19 +65,20 @@ class ThePlatformBaseIE(OnceIE):
 
         return formats, subtitles
 
-    def get_metadata(self, path, video_id):
+    def _download_theplatform_metadata(self, path, video_id):
         info_url = 'http://link.theplatform.com/s/%s?format=preview' % path
-        info = self._download_json(info_url, video_id)
+        return self._download_json(info_url, video_id)
 
+    def _parse_theplatform_metadata(self, info):
         subtitles = {}
         captions = info.get('captions')
         if isinstance(captions, list):
             for caption in captions:
                 lang, src, mime = caption.get('lang', 'en'), caption.get('src'), caption.get('type')
-                subtitles[lang] = [{
+                subtitles.setdefault(lang, []).append({
                     'ext': mimetype2ext(mime),
                     'url': src,
-                }]
+                })
 
         return {
             'title': info['title'],
@@ -86,11 +90,15 @@ class ThePlatformBaseIE(OnceIE):
             'uploader': info.get('billingCode'),
         }
 
+    def _extract_theplatform_metadata(self, path, video_id):
+        info = self._download_theplatform_metadata(path, video_id)
+        return self._parse_theplatform_metadata(info)
 
-class ThePlatformIE(ThePlatformBaseIE):
+
+class ThePlatformIE(ThePlatformBaseIE, AdobePassIE):
     _VALID_URL = r'''(?x)
         (?:https?://(?:link|player)\.theplatform\.com/[sp]/(?P<provider_id>[^/]+)/
-           (?:(?:(?:[^/]+/)+select/)?(?P<media>media/(?:guid/\d+/)?)|(?P<config>(?:[^/\?]+/(?:swf|config)|onsite)/select/))?
+           (?:(?:(?:[^/]+/)+select/)?(?P<media>media/(?:guid/\d+/)?)?|(?P<config>(?:[^/\?]+/(?:swf|config)|onsite)/select/))?
          |theplatform:)(?P<id>[^/\?&]+)'''
 
     _TESTS = [{
@@ -110,6 +118,7 @@ class ThePlatformIE(ThePlatformBaseIE):
             # rtmp download
             'skip_download': True,
         },
+        'skip': '404 Not Found',
     }, {
         # from http://www.cnet.com/videos/tesla-model-s-a-second-step-towards-a-cleaner-motoring-future/
         'url': 'http://link.theplatform.com/s/kYEXFC/22d_qsQ6MIRT',
@@ -147,7 +156,7 @@ class ThePlatformIE(ThePlatformBaseIE):
             'title': 'iPhone Siri’s sassy response to a math question has people talking',
             'description': 'md5:a565d1deadd5086f3331d57298ec6333',
             'duration': 83.0,
-            'thumbnail': 're:^https?://.*\.jpg$',
+            'thumbnail': r're:^https?://.*\.jpg$',
             'timestamp': 1435752600,
             'upload_date': '20150701',
             'uploader': 'NBCU-NEWS',
@@ -170,10 +179,12 @@ class ThePlatformIE(ThePlatformBaseIE):
         if m:
             return [m.group('url')]
 
+        # Are whitesapces ignored in URLs?
+        # https://github.com/rg3/youtube-dl/issues/12044
         matches = re.findall(
-            r'<(?:iframe|script)[^>]+src=(["\'])((?:https?:)?//player\.theplatform\.com/p/.+?)\1', webpage)
+            r'(?s)<(?:iframe|script)[^>]+src=(["\'])((?:https?:)?//player\.theplatform\.com/p/.+?)\1', webpage)
         if matches:
-            return list(zip(*matches))[1]
+            return [re.sub(r'\s', '', list(zip(*matches))[1][0])]
 
     @staticmethod
     def _sign_url(url, sig_key, sig_secret, life=600, include_qs=False):
@@ -265,7 +276,7 @@ class ThePlatformIE(ThePlatformBaseIE):
         formats, subtitles = self._extract_theplatform_smil(smil_url, video_id)
         self._sort_formats(formats)
 
-        ret = self.get_metadata(path, video_id)
+        ret = self._extract_theplatform_metadata(path, video_id)
         combined_subtitles = self._merge_subtitles(ret.get('subtitles', {}), subtitles)
         ret.update({
             'id': video_id,
@@ -288,7 +299,7 @@ class ThePlatformFeedIE(ThePlatformBaseIE):
             'ext': 'mp4',
             'title': 'The Biden factor: will Joe run in 2016?',
             'description': 'Could Vice President Joe Biden be preparing a 2016 campaign? Mark Halperin and Sam Stein weigh in.',
-            'thumbnail': 're:^https?://.*\.jpg$',
+            'thumbnail': r're:^https?://.*\.jpg$',
             'upload_date': '20140208',
             'timestamp': 1391824260,
             'duration': 467.0,
@@ -297,9 +308,10 @@ class ThePlatformFeedIE(ThePlatformBaseIE):
         },
     }]
 
-    def _extract_feed_info(self, provider_id, feed_id, filter_query, video_id, custom_fields=None, asset_types_query={}):
+    def _extract_feed_info(self, provider_id, feed_id, filter_query, video_id, custom_fields=None, asset_types_query={}, account_id=None):
         real_url = self._URL_TEMPLATE % (self.http_scheme(), provider_id, feed_id, filter_query)
         entry = self._download_json(real_url, video_id)['entries'][0]
+        main_smil_url = 'http://link.theplatform.com/s/%s/media/guid/%d/%s' % (provider_id, account_id, entry['guid']) if account_id else None
 
         formats = []
         subtitles = {}
@@ -324,7 +336,7 @@ class ThePlatformFeedIE(ThePlatformBaseIE):
                 if asset_type in asset_types_query:
                     query.update(asset_types_query[asset_type])
                 cur_formats, cur_subtitles = self._extract_theplatform_smil(update_url_query(
-                    smil_url, query), video_id, 'Downloading SMIL data for %s' % asset_type)
+                    main_smil_url or smil_url, query), video_id, 'Downloading SMIL data for %s' % asset_type)
                 formats.extend(cur_formats)
                 subtitles = self._merge_subtitles(subtitles, cur_subtitles)
 
@@ -339,7 +351,7 @@ class ThePlatformFeedIE(ThePlatformBaseIE):
         timestamp = int_or_none(entry.get('media$availableDate'), scale=1000)
         categories = [item['media$name'] for item in entry.get('media$categories', [])]
 
-        ret = self.get_metadata('%s/%s' % (provider_id, first_video_id), video_id)
+        ret = self._extract_theplatform_metadata('%s/%s' % (provider_id, first_video_id), video_id)
         subtitles = self._merge_subtitles(subtitles, ret['subtitles'])
         ret.update({
             'id': video_id,

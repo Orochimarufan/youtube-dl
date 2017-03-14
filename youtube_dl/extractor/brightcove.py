@@ -1,4 +1,4 @@
-# encoding: utf-8
+# coding: utf-8
 from __future__ import unicode_literals
 
 import re
@@ -26,6 +26,8 @@ from ..utils import (
     unescapeHTML,
     unsmuggle_url,
     update_url_query,
+    clean_html,
+    mimetype2ext,
 )
 
 
@@ -90,6 +92,7 @@ class BrightcoveLegacyIE(InfoExtractor):
                 'description': 'md5:363109c02998fee92ec02211bd8000df',
                 'uploader': 'National Ballet of Canada',
             },
+            'skip': 'Video gone',
         },
         {
             # test flv videos served by akamaihd.net
@@ -108,7 +111,7 @@ class BrightcoveLegacyIE(InfoExtractor):
             },
         },
         {
-            # playlist test
+            # playlist with 'videoList'
             # from http://support.brightcove.com/en/video-cloud/docs/playlist-support-single-video-players
             'url': 'http://c.brightcove.com/services/viewer/htmlFederated?playerID=3550052898001&playerKey=AQ%7E%7E%2CAAABmA9XpXk%7E%2C-Kp7jNgisre1fG5OdqpAFUTcs0lP_ZoL',
             'info_dict': {
@@ -116,6 +119,15 @@ class BrightcoveLegacyIE(InfoExtractor):
                 'id': '3550319591001',
             },
             'playlist_mincount': 7,
+        },
+        {
+            # playlist with 'playlistTab' (https://github.com/rg3/youtube-dl/issues/9965)
+            'url': 'http://c.brightcove.com/services/json/experience/runtime/?command=get_programming_for_experience&playerKey=AQ%7E%7E,AAABXlLMdok%7E,NJ4EoMlZ4rZdx9eU1rkMVd8EaYPBBUlg',
+            'info_dict': {
+                'id': '1522758701001',
+                'title': 'Lesson 08',
+            },
+            'playlist_mincount': 10,
         },
     ]
     FLV_VCODECS = {
@@ -167,7 +179,7 @@ class BrightcoveLegacyIE(InfoExtractor):
 
         params = {}
 
-        playerID = find_param('playerID')
+        playerID = find_param('playerID') or find_param('playerId')
         if playerID is None:
             raise ExtractorError('Cannot find player ID')
         params['playerID'] = playerID
@@ -179,6 +191,16 @@ class BrightcoveLegacyIE(InfoExtractor):
         # These fields hold the id of the video
         videoPlayer = find_param('@videoPlayer') or find_param('videoId') or find_param('videoID') or find_param('@videoList')
         if videoPlayer is not None:
+            if isinstance(videoPlayer, list):
+                videoPlayer = videoPlayer[0]
+            videoPlayer = videoPlayer.strip()
+            # UUID is also possible for videoPlayer (e.g.
+            # http://www.popcornflix.com/hoodies-vs-hooligans/7f2d2b87-bbf2-4623-acfb-ea942b4f01dd
+            # or http://www8.hp.com/cn/zh/home.html)
+            if not (re.match(
+                    r'^(?:\d+|[\da-fA-F]{8}-?[\da-fA-F]{4}-?[\da-fA-F]{4}-?[\da-fA-F]{4}-?[\da-fA-F]{12})$',
+                    videoPlayer) or videoPlayer.startswith('ref:')):
+                return None
             params['@videoPlayer'] = videoPlayer
         linkBase = find_param('linkBaseURL')
         if linkBase is not None:
@@ -192,7 +214,7 @@ class BrightcoveLegacyIE(InfoExtractor):
         #   // build Brightcove <object /> XML
         # }
         m = re.search(
-            r'''(?x)customBC.\createVideo\(
+            r'''(?x)customBC\.createVideo\(
                 .*?                                                  # skipping width and height
                 ["\'](?P<playerID>\d+)["\']\s*,\s*                   # playerID
                 ["\'](?P<playerKey>AQ[^"\']{48})[^"\']*["\']\s*,\s*  # playerKey begins with AQ and is 50 characters
@@ -220,13 +242,16 @@ class BrightcoveLegacyIE(InfoExtractor):
         """Return a list of all Brightcove URLs from the webpage """
 
         url_m = re.search(
-            r'<meta\s+property=[\'"]og:video[\'"]\s+content=[\'"](https?://(?:secure|c)\.brightcove.com/[^\'"]+)[\'"]',
-            webpage)
+            r'''(?x)
+                <meta\s+
+                    (?:property|itemprop)=([\'"])(?:og:video|embedURL)\1[^>]+
+                    content=([\'"])(?P<url>https?://(?:secure|c)\.brightcove.com/(?:(?!\2).)+)\2
+            ''', webpage)
         if url_m:
-            url = unescapeHTML(url_m.group(1))
+            url = unescapeHTML(url_m.group('url'))
             # Some sites don't add it, we can't download with this url, for example:
             # http://www.ktvu.com/videos/news/raw-video-caltrain-releases-video-of-man-almost/vCTZdY/
-            if 'playerKey' in url or 'videoId' in url:
+            if 'playerKey' in url or 'videoId' in url or 'idVideo' in url:
                 return [url]
 
         matches = re.findall(
@@ -247,7 +272,7 @@ class BrightcoveLegacyIE(InfoExtractor):
         url, smuggled_data = unsmuggle_url(url, {})
 
         # Change the 'videoId' and others field to '@videoPlayer'
-        url = re.sub(r'(?<=[?&])(videoI(d|D)|bctid)', '%40videoPlayer', url)
+        url = re.sub(r'(?<=[?&])(videoI(d|D)|idVideo|bctid)', '%40videoPlayer', url)
         # Change bckey (used by bcove.me urls) to playerKey
         url = re.sub(r'(?<=[?&])bckey', 'playerKey', url)
         mobj = re.match(self._VALID_URL, url)
@@ -298,13 +323,19 @@ class BrightcoveLegacyIE(InfoExtractor):
             info_url, player_key, 'Downloading playlist information')
 
         json_data = json.loads(playlist_info)
-        if 'videoList' not in json_data:
+        if 'videoList' in json_data:
+            playlist_info = json_data['videoList']
+            playlist_dto = playlist_info['mediaCollectionDTO']
+        elif 'playlistTabs' in json_data:
+            playlist_info = json_data['playlistTabs']
+            playlist_dto = playlist_info['lineupListDTO']['playlistDTOs'][0]
+        else:
             raise ExtractorError('Empty playlist')
-        playlist_info = json_data['videoList']
-        videos = [self._extract_video_info(video_info) for video_info in playlist_info['mediaCollectionDTO']['videoDTOs']]
+
+        videos = [self._extract_video_info(video_info) for video_info in playlist_dto['videoDTOs']]
 
         return self.playlist_result(videos, playlist_id='%s' % playlist_info['id'],
-                                    playlist_title=playlist_info['mediaCollectionDTO']['displayName'])
+                                    playlist_title=playlist_dto['displayName'])
 
     def _extract_video_info(self, video_info):
         video_id = compat_str(video_info['id'])
@@ -490,6 +521,9 @@ class BrightcoveNewIE(InfoExtractor):
         return entries
 
     def _real_extract(self, url):
+        url, smuggled_data = unsmuggle_url(url, {})
+        self._initialize_geo_bypass(smuggled_data.get('geo_countries'))
+
         account_id, player_id, embed, video_id = re.match(self._VALID_URL, url).groups()
 
         webpage = self._download_webpage(
@@ -519,8 +553,10 @@ class BrightcoveNewIE(InfoExtractor):
         except ExtractorError as e:
             if isinstance(e.cause, compat_HTTPError) and e.cause.code == 403:
                 json_data = self._parse_json(e.cause.read().decode(), video_id)[0]
-                raise ExtractorError(
-                    json_data.get('message') or json_data['error_code'], expected=True)
+                message = json_data.get('message') or json_data['error_code']
+                if json_data.get('error_subcode') == 'CLIENT_GEO':
+                    self.raise_geo_restricted(msg=message)
+                raise ExtractorError(message, expected=True)
             raise
 
         title = json_data['name'].strip()
@@ -528,14 +564,16 @@ class BrightcoveNewIE(InfoExtractor):
         formats = []
         for source in json_data.get('sources', []):
             container = source.get('container')
-            source_type = source.get('type')
+            ext = mimetype2ext(source.get('type'))
             src = source.get('src')
-            if source_type == 'application/x-mpegURL' or container == 'M2TS':
+            if ext == 'ism' or container == 'WVM':
+                continue
+            elif ext == 'm3u8' or container == 'M2TS':
                 if not src:
                     continue
                 formats.extend(self._extract_m3u8_formats(
                     src, video_id, 'mp4', 'm3u8_native', m3u8_id='hls', fatal=False))
-            elif source_type == 'application/dash+xml':
+            elif ext == 'mpd':
                 if not src:
                     continue
                 formats.extend(self._extract_mpd_formats(src, video_id, 'dash', fatal=False))
@@ -551,7 +589,7 @@ class BrightcoveNewIE(InfoExtractor):
                     'tbr': tbr,
                     'filesize': int_or_none(source.get('size')),
                     'container': container,
-                    'ext': container.lower(),
+                    'ext': ext or container.lower(),
                 }
                 if width == 0 and height == 0:
                     f.update({
@@ -585,6 +623,13 @@ class BrightcoveNewIE(InfoExtractor):
                         'format_id': build_format_id('rtmp'),
                     })
                 formats.append(f)
+
+        errors = json_data.get('errors')
+        if not formats and errors:
+            error = errors[0]
+            raise ExtractorError(
+                error.get('message') or error.get('error_subcode') or error['error_code'], expected=True)
+
         self._sort_formats(formats)
 
         subtitles = {}
@@ -594,15 +639,21 @@ class BrightcoveNewIE(InfoExtractor):
                     'url': text_track['src'],
                 })
 
+        is_live = False
+        duration = float_or_none(json_data.get('duration'), 1000)
+        if duration and duration < 0:
+            is_live = True
+
         return {
             'id': video_id,
-            'title': title,
-            'description': json_data.get('description'),
+            'title': self._live_title(title) if is_live else title,
+            'description': clean_html(json_data.get('description')),
             'thumbnail': json_data.get('thumbnail') or json_data.get('poster'),
-            'duration': float_or_none(json_data.get('duration'), 1000),
+            'duration': duration,
             'timestamp': parse_iso8601(json_data.get('published_at')),
             'uploader_id': account_id,
             'formats': formats,
             'subtitles': subtitles,
             'tags': json_data.get('tags', []),
+            'is_live': is_live,
         }
