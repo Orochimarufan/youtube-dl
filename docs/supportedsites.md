@@ -28,6 +28,7 @@
  - **acast**
  - **acast:channel**
  - **AddAnime**
+ - **ADN**: Anime Digital Network
  - **AdobeTV**
  - **AdobeTVChannel**
  - **AdobeTVShow**
@@ -67,6 +68,7 @@
  - **arte.tv:playlist**
  - **AtresPlayer**
  - **ATTTechChannel**
+ - **ATVAt**
  - **AudiMedia**
  - **AudioBoom**
  - **audiomack**
@@ -108,6 +110,7 @@
  - **blinkx**
  - **Bloomberg**
  - **BokeCC**
+ - **BostonGlobe**
  - **Bpb**: Bundeszentrale für politische Bildung
  - **BR**: Bayerischer Rundfunk Mediathek
  - **BravoTV**
@@ -208,6 +211,8 @@
  - **Digiteka**
  - **Discovery**
  - **DiscoveryGo**
+ - **DiscoveryGoPlaylist**
+ - **DiscoveryNetworksDe**
  - **Disney**
  - **Dotsub**
  - **DouyuTV**: 斗鱼
@@ -309,8 +314,8 @@
  - **GPUTechConf**
  - **Groupon**
  - **Hark**
- - **HBO**
- - **HBOEpisode**
+ - **hbo**
+ - **hbo:episode**
  - **HearThisAt**
  - **Heise**
  - **HellPorno**
@@ -424,6 +429,7 @@
  - **MatchTV**
  - **MDR**: MDR.DE and KiKA
  - **media.ccc.de**
+ - **Medialaan**
  - **Meipai**: 美拍
  - **MelonVOD**
  - **META**
@@ -567,6 +573,8 @@
  - **orf:iptv**: iptv.ORF.at
  - **orf:oe1**: Radio Österreich 1
  - **orf:tvthek**: ORF TVthek
+ - **PacktPub**
+ - **PacktPubCourse**
  - **PandaTV**: 熊猫TV
  - **pandora.tv**: 판도라TV
  - **parliamentlive.tv**: UK parliament videos
@@ -624,7 +632,7 @@
  - **radiofrance**
  - **RadioJavan**
  - **Rai**
- - **RaiTV**
+ - **RaiPlay**
  - **RBMARadio**
  - **RDS**: RDS.ca
  - **RedBullTV**
@@ -776,12 +784,12 @@
  - **ThisAV**
  - **ThisOldHouse**
  - **tinypic**: tinypic.com videos
- - **tlc.de**
  - **TMZ**
  - **TMZArticle**
  - **TNAFlix**
  - **TNAFlixNetworkEmbed**
  - **toggle**
+ - **ToonGoggles**
  - **Tosh**: Tosh.0
  - **tou.tv**
  - **Toypics**: Toypics user profile
@@ -921,6 +929,8 @@
  - **vpro**: npo.nl and ntr.nl
  - **Vrak**
  - **VRT**
+ - **vrv**
+ - **vrv:series**
  - **vube**: Vube.com
  - **VuClip**
  - **VVVVID**
@@ -948,7 +958,7 @@
  - **WSJ**: Wall Street Journal
  - **XBef**
  - **XboxClips**
- - **XFileShare**: XFileShare based sites: DaClips, FileHoot, GorillaVid, MovPod, PowerWatch, Rapidvideo.ws, TheVideoBee, Vidto, Streamin.To, XVIDSTAGE
+ - **XFileShare**: XFileShare based sites: DaClips, FileHoot, GorillaVid, MovPod, PowerWatch, Rapidvideo.ws, TheVideoBee, Vidto, Streamin.To, XVIDSTAGE, Vid ABC
  - **XHamster**
  - **XHamsterEmbed**
  - **xiami:album**: 虾米音乐 - 专辑

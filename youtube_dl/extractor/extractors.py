@@ -19,6 +19,7 @@ from .acast import (
     ACastChannelIE,
 )
 from .addanime import AddAnimeIE
+from .adn import ADNIE
 from .adobetv import (
     AdobeTVIE,
     AdobeTVShowIE,
@@ -71,6 +72,7 @@ from .arte import (
 )
 from .atresplayer import AtresPlayerIE
 from .atttechchannel import ATTTechChannelIE
+from .atvat import ATVAtIE
 from .audimedia import AudiMediaIE
 from .audioboom import AudioBoomIE
 from .audiomack import AudiomackIE, AudiomackAlbumIE
@@ -117,6 +119,7 @@ from .bleacherreport import (
 from .blinkx import BlinkxIE
 from .bloomberg import BloombergIE
 from .bokecc import BokeCCIE
+from .bostonglobe import BostonGlobeIE
 from .bpb import BpbIE
 from .br import BRIE
 from .bravotv import BravoTVIE
@@ -269,6 +272,8 @@ from .discoverygo import (
     DiscoveryGoIE,
     DiscoveryGoPlaylistIE,
 )
+from .discoverynetworks import DiscoveryNetworksDeIE
+from .discoveryvr import DiscoveryVRIE
 from .disney import DisneyIE
 from .dispeak import DigitallySpeakingIE
 from .dropbox import DropboxIE
@@ -726,6 +731,10 @@ from .orf import (
     ORFFM4IE,
     ORFIPTVIE,
 )
+from .packtpub import (
+    PacktPubIE,
+    PacktPubCourseIE,
+)
 from .pandatv import PandaTVIE
 from .pandoratv import PandoraTVIE
 from .parliamentliveuk import ParliamentLiveUKIE
@@ -799,7 +808,7 @@ from .radiojavan import RadioJavanIE
 from .radiobremen import RadioBremenIE
 from .radiofrance import RadioFranceIE
 from .rai import (
-    RaiTVIE,
+    RaiPlayIE,
     RaiIE,
 )
 from .rbmaradio import RBMARadioIE
@@ -978,7 +987,6 @@ from .thisav import ThisAVIE
 from .thisoldhouse import ThisOldHouseIE
 from .threeqsdn import ThreeQSDNIE
 from .tinypic import TinyPicIE
-from .tlc import TlcDeIE
 from .tmz import (
     TMZIE,
     TMZArticleIE,
@@ -991,6 +999,7 @@ from .tnaflix import (
 )
 from .toggle import ToggleIE
 from .tonline import TOnlineIE
+from .toongoggles import ToonGogglesIE
 from .toutv import TouTvIE
 from .toypics import ToypicsUserIE, ToypicsIE
 from .traileraddict import TrailerAddictIE
@@ -1020,6 +1029,7 @@ from .tv2 import (
 )
 from .tv3 import TV3IE
 from .tv4 import TV4IE
+from .tv5mondeplus import TV5MondePlusIE
 from .tva import TVAIE
 from .tvanouvelles import (
     TVANouvellesIE,
@@ -1179,6 +1189,11 @@ from .voxmedia import VoxMediaIE
 from .vporn import VpornIE
 from .vrt import VRTIE
 from .vrak import VrakIE
+from .vrv import (
+    VRVIE,
+    VRVSeriesIE,
+)
+from .medialaan import MedialaanIE
 from .vube import VubeIE
 from .vuclip import VuClipIE
 from .vvvvid import VVVVIDIE
