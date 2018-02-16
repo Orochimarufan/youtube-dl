@@ -151,10 +151,16 @@ class VimeoBaseInfoExtractor(InfoExtractor):
                     else:
                         mpd_manifest_urls = [(format_id, manifest_url)]
                     for f_id, m_url in mpd_manifest_urls:
-                        formats.extend(self._extract_mpd_formats(
+                        mpd_formats = self._extract_mpd_formats(
                             m_url.replace('/master.json', '/master.mpd'), video_id, f_id,
                             'Downloading %s MPD information' % cdn_name,
-                            fatal=False))
+                            fatal=False)
+                        for f in mpd_formats:
+                            if f.get('vcodec') == 'none':
+                                f['preference'] = -50
+                            elif f.get('acodec') == 'none':
+                                f['preference'] = -40
+                        formats.extend(mpd_formats)
 
         subtitles = {}
         text_tracks = config['request'].get('text_tracks')
@@ -406,7 +412,7 @@ class VimeoIE(VimeoBaseInfoExtractor):
         urls = []
         # Look for embedded (iframe) Vimeo player
         for mobj in re.finditer(
-                r'<iframe[^>]+?src=(["\'])(?P<url>(?:https?:)?//player\.vimeo\.com/video/.+?)\1',
+                r'<iframe[^>]+?src=(["\'])(?P<url>(?:https?:)?//player\.vimeo\.com/video/\d+.*?)\1',
                 webpage):
             urls.append(VimeoIE._smuggle_referrer(unescapeHTML(mobj.group('url')), url))
         PLAIN_EMBED_RE = (
@@ -462,11 +468,12 @@ class VimeoIE(VimeoBaseInfoExtractor):
         request = sanitized_Request(url, headers=headers)
         try:
             webpage, urlh = self._download_webpage_handle(request, video_id)
+            redirect_url = compat_str(urlh.geturl())
             # Some URLs redirect to ondemand can't be extracted with
             # this extractor right away thus should be passed through
             # ondemand extractor (e.g. https://vimeo.com/73445910)
-            if VimeoOndemandIE.suitable(urlh.geturl()):
-                return self.url_result(urlh.geturl(), VimeoOndemandIE.ie_key())
+            if VimeoOndemandIE.suitable(redirect_url):
+                return self.url_result(redirect_url, VimeoOndemandIE.ie_key())
         except ExtractorError as ee:
             if isinstance(ee.cause, compat_HTTPError) and ee.cause.code == 403:
                 errmsg = ee.cause.read()
@@ -535,15 +542,15 @@ class VimeoIE(VimeoBaseInfoExtractor):
             if re.search(r'<form[^>]+?id="pw_form"', webpage) is not None:
                 if '_video_password_verified' in data:
                     raise ExtractorError('video password verification failed!')
-                self._verify_video_password(url, video_id, webpage)
+                self._verify_video_password(redirect_url, video_id, webpage)
                 return self._real_extract(
-                    smuggle_url(url, {'_video_password_verified': 'verified'}))
+                    smuggle_url(redirect_url, {'_video_password_verified': 'verified'}))
             else:
                 raise ExtractorError('Unable to extract info section',
                                      cause=e)
         else:
             if config.get('view') == 4:
-                config = self._verify_player_video_password(url, video_id)
+                config = self._verify_player_video_password(redirect_url, video_id)
 
         def is_rented():
             if '>You rented this title.<' in webpage:
@@ -609,7 +616,10 @@ class VimeoIE(VimeoBaseInfoExtractor):
                 if download_url and not source_file.get('is_cold') and not source_file.get('is_defrosting'):
                     source_name = source_file.get('public_name', 'Original')
                     if self._is_valid_url(download_url, video_id, '%s video' % source_name):
-                        ext = source_file.get('extension', determine_ext(download_url)).lower()
+                        ext = (try_get(
+                            source_file, lambda x: x['extension'],
+                            compat_str) or determine_ext(
+                            download_url, None) or 'mp4').lower()
                         formats.append({
                             'url': download_url,
                             'ext': ext,

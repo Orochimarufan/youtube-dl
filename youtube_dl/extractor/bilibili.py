@@ -54,6 +54,22 @@ class BiliBiliIE(InfoExtractor):
             'description': '如果你是神明，并且能够让妄想成为现实。那你会进行怎么样的妄想？是淫靡的世界？独裁社会？毁灭性的制裁？还是……2015年，涩谷。从6年前发生的大灾害“涩谷地震”之后复兴了的这个街区里新设立的私立高中...',
         },
         'skip': 'Geo-restricted to China',
+    }, {
+        # Title with double quotes
+        'url': 'http://www.bilibili.com/video/av8903802/',
+        'info_dict': {
+            'id': '8903802',
+            'ext': 'mp4',
+            'title': '阿滴英文｜英文歌分享#6 "Closer',
+            'description': '滴妹今天唱Closer給你聽! 有史以来，被推最多次也是最久的歌曲，其实歌词跟我原本想像差蛮多的，不过还是好听！ 微博@阿滴英文',
+            'uploader': '阿滴英文',
+            'uploader_id': '65880958',
+            'timestamp': 1488382620,
+            'upload_date': '20170301',
+        },
+        'params': {
+            'skip_download': True,  # Test metadata only
+        },
     }]
 
     _APP_KEY = '84956560bc028eb7'
@@ -86,6 +102,7 @@ class BiliBiliIE(InfoExtractor):
                     video_id, anime_id, compat_urlparse.urljoin(url, '//bangumi.bilibili.com/anime/%s' % anime_id)))
             headers = {
                 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                'Referer': url
             }
             headers.update(self.geo_verification_headers())
 
@@ -100,10 +117,15 @@ class BiliBiliIE(InfoExtractor):
         payload = 'appkey=%s&cid=%s&otype=json&quality=2&type=mp4' % (self._APP_KEY, cid)
         sign = hashlib.md5((payload + self._BILIBILI_KEY).encode('utf-8')).hexdigest()
 
+        headers = {
+            'Referer': url
+        }
+        headers.update(self.geo_verification_headers())
+
         video_info = self._download_json(
             'http://interface.bilibili.com/playurl?%s&sign=%s' % (payload, sign),
             video_id, note='Downloading video info page',
-            headers=self.geo_verification_headers())
+            headers=headers)
 
         if 'durl' not in video_info:
             self._report_error(video_info)
@@ -122,6 +144,11 @@ class BiliBiliIE(InfoExtractor):
                     'preference': -2 if 'hd.mp4' in backup_url else -3,
                 })
 
+            for a_format in formats:
+                a_format.setdefault('http_headers', {}).update({
+                    'Referer': url,
+                })
+
             self._sort_formats(formats)
 
             entries.append({
@@ -130,7 +157,7 @@ class BiliBiliIE(InfoExtractor):
                 'formats': formats,
             })
 
-        title = self._html_search_regex('<h1[^>]+title="([^"]+)">', webpage, 'title')
+        title = self._html_search_regex('<h1[^>]*>([^<]+)</h1>', webpage, 'title')
         description = self._html_search_meta('description', webpage)
         timestamp = unified_timestamp(self._html_search_regex(
             r'<time[^>]+datetime="([^"]+)"', webpage, 'upload time', default=None))

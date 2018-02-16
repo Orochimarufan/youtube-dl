@@ -20,6 +20,24 @@ from .utils import (
 from .version import __version__
 
 
+def _hide_login_info(opts):
+    PRIVATE_OPTS = set(['-p', '--password', '-u', '--username', '--video-password', '--ap-password', '--ap-username'])
+    eqre = re.compile('^(?P<key>' + ('|'.join(re.escape(po) for po in PRIVATE_OPTS)) + ')=.+$')
+
+    def _scrub_eq(o):
+        m = eqre.match(o)
+        if m:
+            return m.group('key') + '=PRIVATE'
+        else:
+            return o
+
+    opts = list(map(_scrub_eq, opts))
+    for idx, opt in enumerate(opts):
+        if opt in PRIVATE_OPTS and idx + 1 < len(opts):
+            opts[idx + 1] = 'PRIVATE'
+    return opts
+
+
 def parseOpts(overrideArguments=None):
     def _readOptions(filename_bytes, default=[]):
         try:
@@ -92,26 +110,6 @@ def parseOpts(overrideArguments=None):
 
     def _comma_separated_values_options_callback(option, opt_str, value, parser):
         setattr(parser.values, option.dest, value.split(','))
-
-    def _hide_login_info(opts):
-        PRIVATE_OPTS = ['-p', '--password', '-u', '--username', '--video-password', '--ap-password', '--ap-username']
-        eqre = re.compile('^(?P<key>' + ('|'.join(re.escape(po) for po in PRIVATE_OPTS)) + ')=.+$')
-
-        def _scrub_eq(o):
-            m = eqre.match(o)
-            if m:
-                return m.group('key') + '=PRIVATE'
-            else:
-                return o
-
-        opts = list(map(_scrub_eq, opts))
-        for private_opt in PRIVATE_OPTS:
-            try:
-                i = opts.index(private_opt)
-                opts[i + 1] = 'PRIVATE'
-            except ValueError:
-                pass
-        return opts
 
     # No need to wrap help messages if we're on a wide console
     columns = compat_get_terminal_size().columns
@@ -310,7 +308,7 @@ def parseOpts(overrideArguments=None):
         metavar='FILTER', dest='match_filter', default=None,
         help=(
             'Generic video filter. '
-            'Specify any key (see help for -o for a list of available keys) to '
+            'Specify any key (see the "OUTPUT TEMPLATE" for a list of available keys) to '
             'match if the key is present, '
             '!key to check if the key is not present, '
             'key > NUMBER (like "comment_count > 12", also works with '
@@ -481,6 +479,11 @@ def parseOpts(overrideArguments=None):
         action='store_true', dest='noresizebuffer', default=False,
         help='Do not automatically adjust the buffer size. By default, the buffer size is automatically resized from an initial value of SIZE.')
     downloader.add_option(
+        '--http-chunk-size',
+        dest='http_chunk_size', metavar='SIZE', default=None,
+        help='Size of a chunk for chunk-based HTTP downloading (e.g. 10485760 or 10M) (default is disabled). '
+             'May be useful for bypassing bandwidth throttling imposed by a webserver (experimental)')
+    downloader.add_option(
         '--test',
         action='store_true', dest='test', default=False,
         help=optparse.SUPPRESS_HELP)
@@ -618,7 +621,7 @@ def parseOpts(overrideArguments=None):
     verbosity.add_option(
         '-j', '--dump-json',
         action='store_true', dest='dumpjson', default=False,
-        help='Simulate, quiet but print JSON information. See --output for a description of available keys.')
+        help='Simulate, quiet but print JSON information. See the "OUTPUT TEMPLATE" for a description of available keys.')
     verbosity.add_option(
         '-J', '--dump-single-json',
         action='store_true', dest='dump_single_json', default=False,
@@ -814,11 +817,12 @@ def parseOpts(overrideArguments=None):
         '--metadata-from-title',
         metavar='FORMAT', dest='metafromtitle',
         help='Parse additional metadata like song title / artist from the video title. '
-             'The format syntax is the same as --output, '
-             'the parsed parameters replace existing values. '
-             'Additional templates: %(album)s, %(artist)s. '
+             'The format syntax is the same as --output. Regular expression with '
+             'named capture groups may also be used. '
+             'The parsed parameters replace existing values. '
              'Example: --metadata-from-title "%(artist)s - %(title)s" matches a title like '
-             '"Coldplay - Paradise"')
+             '"Coldplay - Paradise". '
+             'Example (regex): --metadata-from-title "(?P<artist>.+?) - (?P<title>.+)"')
     postproc.add_option(
         '--xattrs',
         action='store_true', dest='xattrs', default=False,
@@ -852,7 +856,7 @@ def parseOpts(overrideArguments=None):
     postproc.add_option(
         '--convert-subs', '--convert-subtitles',
         metavar='FORMAT', dest='convertsubtitles', default=None,
-        help='Convert the subtitles to other format (currently supported: srt|ass|vtt)')
+        help='Convert the subtitles to other format (currently supported: srt|ass|vtt|lrc)')
 
     parser.add_option_group(general)
     parser.add_option_group(network)

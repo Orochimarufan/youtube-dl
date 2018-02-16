@@ -125,9 +125,12 @@ class KalturaIE(InfoExtractor):
                         (?:https?:)?//cdnapi(?:sec)?\.kaltura\.com(?::\d+)?/(?:(?!(?P=q1)).)*\b(?:p|partner_id)/(?P<partner_id>\d+)(?:(?!(?P=q1)).)*
                     (?P=q1).*?
                     (?:
-                        entry_?[Ii]d|
-                        (?P<q2>["'])entry_?[Ii]d(?P=q2)
-                    )\s*:\s*
+                        (?:
+                            entry_?[Ii]d|
+                            (?P<q2>["'])entry_?[Ii]d(?P=q2)
+                        )\s*:\s*|
+                        \[\s*(?P<q2_1>["'])entry_?[Ii]d(?P=q2_1)\s*\]\s*=\s*
+                    )
                     (?P<q3>["'])(?P<id>(?:(?!(?P=q3)).)+)(?P=q3)
                 ''', webpage) or
             re.search(
@@ -287,6 +290,9 @@ class KalturaIE(InfoExtractor):
             # skip for now.
             if f.get('fileExt') == 'chun':
                 continue
+            # DRM-protected video, cannot be decrypted
+            if f.get('fileExt') == 'wvm':
+                continue
             if not f.get('fileExt'):
                 # QT indicates QuickTime; some videos have broken fileExt
                 if f.get('containerFormat') == 'qt':
@@ -324,7 +330,7 @@ class KalturaIE(InfoExtractor):
         if captions:
             for caption in captions.get('objects', []):
                 # Continue if caption is not ready
-                if f.get('status') != 2:
+                if caption.get('status') != 2:
                     continue
                 if not caption.get('id'):
                     continue
