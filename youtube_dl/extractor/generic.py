@@ -110,6 +110,8 @@ from .xfileshare import XFileShareIE
 from .cloudflarestream import CloudflareStreamIE
 from .peertube import PeerTubeIE
 from .indavideo import IndavideoEmbedIE
+from .apa import APAIE
+from .foxnews import FoxNewsIE
 
 
 class GenericIE(InfoExtractor):
@@ -1393,17 +1395,6 @@ class GenericIE(InfoExtractor):
                 'skip_download': True,
             },
         },
-        # SVT embed
-        {
-            'url': 'http://www.svt.se/sport/ishockey/jagr-tacklar-giroux-under-intervjun',
-            'info_dict': {
-                'id': '2900353',
-                'ext': 'flv',
-                'title': 'Här trycker Jagr till Giroux (under SVT-intervjun)',
-                'duration': 27,
-                'age_limit': 0,
-            },
-        },
         # Crooks and Liars embed
         {
             'url': 'http://crooksandliars.com/2015/04/fox-friends-says-protecting-atheists',
@@ -2037,6 +2028,23 @@ class GenericIE(InfoExtractor):
                 'uploader_id': '546363',
             },
             'add_ie': [IndavideoEmbedIE.ie_key()],
+            'params': {
+                'skip_download': True,
+            },
+        },
+        {
+            # APA embed via JWPlatform embed
+            'url': 'http://www.vol.at/blue-man-group/5593454',
+            'info_dict': {
+                'id': 'jjv85FdZ',
+                'ext': 'mp4',
+                'title': '"Blau ist mysteriös": Die Blue Man Group im Interview',
+                'description': 'md5:d41d8cd98f00b204e9800998ecf8427e',
+                'thumbnail': r're:^https?://.*\.jpg$',
+                'duration': 254,
+                'timestamp': 1519211149,
+                'upload_date': '20180221',
+            },
             'params': {
                 'skip_download': True,
             },
@@ -3058,7 +3066,7 @@ class GenericIE(InfoExtractor):
             return self.playlist_from_matches(
                 cloudflarestream_urls, video_id, video_title, ie=CloudflareStreamIE.ie_key())
 
-        peertube_urls = PeerTubeIE._extract_urls(webpage)
+        peertube_urls = PeerTubeIE._extract_urls(webpage, url)
         if peertube_urls:
             return self.playlist_from_matches(
                 peertube_urls, video_id, video_title, ie=PeerTubeIE.ie_key())
@@ -3067,6 +3075,16 @@ class GenericIE(InfoExtractor):
         if indavideo_urls:
             return self.playlist_from_matches(
                 indavideo_urls, video_id, video_title, ie=IndavideoEmbedIE.ie_key())
+
+        apa_urls = APAIE._extract_urls(webpage)
+        if apa_urls:
+            return self.playlist_from_matches(
+                apa_urls, video_id, video_title, ie=APAIE.ie_key())
+
+        foxnews_urls = FoxNewsIE._extract_urls(webpage)
+        if foxnews_urls:
+            return self.playlist_from_matches(
+                foxnews_urls, video_id, video_title, ie=FoxNewsIE.ie_key())
 
         sharevideos_urls = [mobj.group('url') for mobj in re.finditer(
             r'<iframe[^>]+?\bsrc\s*=\s*(["\'])(?P<url>(?:https?:)?//embed\.share-videos\.se/auto/embed/\d+\?.*?\buid=\d+.*?)\1',

@@ -1228,7 +1228,7 @@ def unified_timestamp(date_str, day_first=True):
 
 
 def determine_ext(url, default_ext='unknown_video'):
-    if url is None:
+    if url is None or '.' not in url:
         return default_ext
     guess = url.partition('?')[0].rpartition('.')[2]
     if re.match(r'^[A-Za-z0-9]+$', guess):
@@ -2667,6 +2667,7 @@ def dfxp2srt(dfxp_data):
     ]
 
     _x = functools.partial(xpath_with_ns, ns_map={
+        'xml': 'http://www.w3.org/XML/1998/namespace',
         'ttml': 'http://www.w3.org/ns/ttml',
         'tts': 'http://www.w3.org/ns/ttml#styling',
     })
@@ -2758,7 +2759,9 @@ def dfxp2srt(dfxp_data):
     repeat = False
     while True:
         for style in dfxp.findall(_x('.//ttml:style')):
-            style_id = style.get('id')
+            style_id = style.get('id') or style.get(_x('xml:id'))
+            if not style_id:
+                continue
             parent_style_id = style.get('style')
             if parent_style_id:
                 if parent_style_id not in styles:
