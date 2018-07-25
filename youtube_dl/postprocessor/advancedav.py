@@ -897,7 +897,7 @@ class AdvancedAVPP(PostProcessor):
             task_description.append("repack")
 
         # Embed subtitles
-        if self._opts.get("embed_subs"):
+        if self._opts.get("embed_subs") and "subtitles" in information:
             self.embed_subs(main, information)
             task_description.append("embed subtitles")
 
