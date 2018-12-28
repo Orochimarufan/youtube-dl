@@ -39,6 +39,7 @@ import re
 import subprocess
 import collections
 import itertools
+import json
 
 from collections.abc import Iterable, Mapping, Sequence, Iterator, MutableMapping
 
@@ -233,12 +234,10 @@ class InputFile(File):
         r"(?: \((?P<profile>[^\)]+)\))?(?P<extra>.+)?"
     )
 
-    def _initialize_streams(self, probe: str=None) -> Iterator:
+    def _initialize_streams_1(self, probe: str=None):
         """ Parse the ffprobe output
 
         The locale of the probe output in \param probe should be C!
-
-        :rtype: Iterator[InputStream]
         """
         if probe is None:
             probe = self.pp.call_probe(("-i", self.name))
@@ -250,6 +249,23 @@ class InputFile(File):
                                          match.group("lang"),
                                          match.group("codec"),
                                          match.group("profile")))
+        self._streams_initialized = True
+
+    _probe_json = "-print_format", "json", "-show_streams"
+
+    def _initialize_streams(self, probe: str=None) -> Iterator:
+        # Ad-Hoc fix to use JSON output instead of regexps
+        if probe is None:
+            probe = self.pp.call_probe(("-i", self.name) + self._probe_json, ret=1)
+
+        for stream in json.loads(probe)["streams"]:
+            self._add_stream(InputStream(self,
+                                         stream["codec_type"][0],
+                                         stream["index"],
+                                         stream["tags"]["language"] if ("tags" in stream and "language" in stream["tags"]) else None,
+                                         stream["codec_name"],
+                                         stream["profile"] if "profile" in stream else None))
+
         self._streams_initialized = True
 
     @property
@@ -600,6 +616,8 @@ class SimpleTask(Task):
 from ..version import __version__
 from .common import PostProcessor
 
+from .ffmpeg import EXT_TO_OUT_FORMATS, ACODECS
+
 from ..utils import (
     check_executable,
     encodeFilename,
@@ -684,7 +702,7 @@ class AdvancedAVPP(PostProcessor):
     _posix_env = dict(os.environ)
     _posix_env["LANG"] = _posix_env["LC_ALL"] = "C"
 
-    def _exec(self, argv: Sequence, env: Mapping=None) -> str:
+    def _exec(self, argv: Sequence, env: Mapping=None, ret=2) -> str:
         """
         Execute a shell command
         :param argv: The program and arguments
@@ -702,7 +720,10 @@ class AdvancedAVPP(PostProcessor):
             msg = err.strip().split('\n')[-1]
             raise AdvancedAVError(msg)
 
-        return err.decode("utf-8", "replace")
+        if ret == 2:
+            return err.decode("utf-8", "replace")
+        else:
+            return out.decode("utf-8", "replace")
 
     def call_conv(self, args: Iterable) -> str:
         """ Actually call avconv/ffmpeg
@@ -714,7 +735,7 @@ class AdvancedAVPP(PostProcessor):
 
         return self._exec(tuple(itertools.chain((self._prog_conv,), args)))
 
-    def call_probe(self, args: Iterable) -> str:
+    def call_probe(self, args: Iterable, ret=2) -> str:
         """ Call ffprobe/avprobe (With LANG=LC_ALL=C)
 
         :type args: Iterable[str]
@@ -722,7 +743,7 @@ class AdvancedAVPP(PostProcessor):
         if not self._prog_probe:
             self._detect_progs()
 
-        return self._exec(tuple(itertools.chain((self._prog_probe,), args)), env=self._posix_env)
+        return self._exec(tuple(itertools.chain((self._prog_probe,), args)), env=self._posix_env, ret=ret)
 
     # ---- Work ----
     # noinspection PyMethodMayBeStatic ## We might want to use _opts inside
@@ -748,42 +769,39 @@ class AdvancedAVPP(PostProcessor):
         out.set_meta("encoded_by", "youtube-dl %s" % __version__)
         out.set_meta("copyright", "the original artist")
 
-    def embed_subs(self, out: OutputFile, info: Mapping):
-        """ Add the subtitle streams from the external files """
-        # Get default sub format
-        if self._opts.get("subs_codec"):
-            sub_codec = self._opts["subs_codec"].lower()
-        else:
-            sub_codec = "srt"
-
-        input_sub_codec = sub_codec
+    def embed_subs_file(self, out: OutputFile, path: str, lang: str, src_codec: str):
+        """ Add subtitle streams from a single file """
+        # See if user specified codec
+        codec = (self._opts.get("subs_codec", None) or src_codec).lower()
 
         # Check compatibility
         if out.container.lower() in (DEFAULT_CONTAINER, "webm"):
-            if sub_codec not in ("ass", "ssa", "srt"):
+            if codec not in ("ass", "ssa", "srt", "vtt"):
                 self.to_screen("Matroska (mkv, webm) container cannot handle %s subtitles. Converting to SSA"
-                               % sub_codec.upper())
-                sub_codec = "ssa"
-            else:
-                sub_codec = "copy"
+                               % codec.upper())
+                codec = "ssa"
+            elif codec == src_codec:
+                codec = "copy"
         elif out.container.lower() in ("mp4", "m4v", "mov"):
-            if sub_codec != "mov_text":
+            if codec != "mov_text":
                 self.to_screen("MP4 container support for subtitles is bad. Trying to add subtitles as MOV_TEXT")
-                sub_codec = "mov_text"
+                codec = "mov_text"
         else:
             raise AdvancedAVError("Embedding subtitles is not supported for %s containers!" % out.container.upper())
 
-        # TODO: Make the IE choose the best subtitle codec?
+        lang_code = LangMap.convert_lang_code(lang)
+        infile = out.task.add_input(subtitles_filename(path, lang, src_codec))
 
+        for stream in infile.streams:
+            out = out.map_stream_(stream, codec)
+            if lang_code:
+                out.set_meta("language", lang_code)
+
+    def embed_subs(self, out: OutputFile, info: Mapping):
+        """ Add the subtitle streams from the external files """
         # Add subtitle streams
-        for lang in info['subtitles'].keys():
-            lang_code = LangMap.convert_lang_code(lang)
-            infile = out.task.add_input(subtitles_filename(info["filepath"], lang, input_sub_codec))
-
-            for stream in infile.streams:
-                out = out.map_stream_(stream, sub_codec)
-                if lang_code:
-                    out.set_meta("language", lang_code)
+        for lang, sinfo in info['requested_subtitles'].items():
+            self.embed_subs_file(out, info["filepath"], lang, sinfo["ext"])
 
     def extract_audio(self, task: Task, filename: str) -> OutputFile:
         # Determine format (XXX: Just take first audio stream?)
@@ -802,7 +820,7 @@ class AdvancedAVPP(PostProcessor):
 
         if pref_fmt == "best" or pref_fmt == audio_stream.codec or \
                 (pref_fmt == "m4a" and audio_stream.codec == "aac"):
-            if audio_stream.codec == "aac" and pref_fmt in ("aac", "best"):
+            if audio_stream.codec == "aac" and pref_fmt in ("m4a", "best"):
                 audio_ext = "m4a"
                 audio_options["bsf"] = "aac_adtstoasc"
             elif pref_fmt in ("aac", "mp3", "vorbis", "ogg", "opus"):
@@ -823,15 +841,7 @@ class AdvancedAVPP(PostProcessor):
                         audio_options["b"] = pref_q + "k"
         else:
             # Encode
-            audio_codec = {
-                'mp3': 'libmp3lame',
-                'aac': 'aac',
-                'm4a': 'aac',
-                'opus': 'opus',
-                'ogg': 'libvorbis',
-                'vorbis': 'libvorbis',
-                'wav': None
-            }.get(pref_fmt, pref_fmt)
+            ACODECS.get(pref_fmt, pref_fmt)
             audio_container = {
                 'aac': 'adts',
                 'vorbis': 'ogg'
@@ -856,6 +866,12 @@ class AdvancedAVPP(PostProcessor):
         audio.map_stream(audio_stream, audio_codec, audio_options)
 
         return audio
+
+    def fixup_m3u8(self, task: Task):
+        for out in task.outputs:
+            for s in out.audio_streams:
+                if s.codec == "aac":
+                    s.options["bsf"] = "aac_adtstoasc"
 
     # ---- Main ----
     default_args = ["-y"]
@@ -889,7 +905,8 @@ class AdvancedAVPP(PostProcessor):
             task_description.append("merge")
         else:
             # Add main video file
-            main.map_all_streams(information["filepath"])
+            print(main.map_all_streams(information["filepath"]))
+            print(task.inputs[0].streams)
 
         # Repacking
         if self._opts.get("repack_container"):
@@ -915,6 +932,16 @@ class AdvancedAVPP(PostProcessor):
                     self.add_metadata(audio, information)
 
                 task_description.append("extract audio")
+
+        # Fixup
+        if "__fixups" in information:
+            for fu in information["__fixups"]:
+                if fu == "m3u8_aac":
+                    # Must come after extract_audio
+                    self.fixup_m3u8(task)
+                    task_description.append("fix aac")
+                else:
+                    raise AdvancedAVError("Unknown Fixup: %s" % fu)
 
         # --- Run ---
         self.to_screen("Running AAV tasks for '%s' (%s)...", filename, ", ".join(task_description))

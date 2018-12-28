@@ -248,6 +248,11 @@ def _real_main(argv=None):
     # PostProcessors
     postprocessors = []
 
+    if opts.metafromtitle:
+        postprocessors.append({
+            'key': 'MetadataFromTitle',
+            'titleformat': opts.metafromtitle
+        })
     if opts.use_aavpp:
         # Handles addmetadata, recodevideo, embedsubtitles, extractaudio
         postprocessors.append({
@@ -265,14 +270,17 @@ def _real_main(argv=None):
                 # Audio Options
                 "audio_preferred_format": opts.audioformat,
                 "audio_preferred_quality": opts.audioquality,
+                # Subtitle Options
+                "subs_codec": opts.convertsubtitles,
             },
         })
-    else:
-        if opts.metafromtitle:
+        # AAV only handles converting subs when embedding them into the file
+        if opts.convertsubtitles and not opts.embedsubtitles:
             postprocessors.append({
-                'key': 'MetadataFromTitle',
-                'titleformat': opts.metafromtitle
+                'key': 'FFmpegSubtitlesConvertor',
+                'format': opts.convertsubtitles,
             })
+    else:
         if opts.extractaudio:
             postprocessors.append({
                 'key': 'FFmpegExtractAudio',
@@ -312,10 +320,10 @@ def _real_main(argv=None):
         })
         if not already_have_thumbnail:
             opts.writethumbnail = True
-        # XAttrMetadataPP should be run after post-processors that may change file
-        # contents
-        if opts.xattrs:
-            postprocessors.append({'key': 'XAttrMetadata'})
+    # XAttrMetadataPP should be run after post-processors that may change file
+    # contents
+    if opts.xattrs:
+        postprocessors.append({'key': 'XAttrMetadata'})
     # Please keep ExecAfterDownload towards the bottom as it allows the user to modify the final file in any way.
     # So if the user is able to remove the file before your postprocessor runs it might cause a few problems.
     if opts.exec_cmd:
