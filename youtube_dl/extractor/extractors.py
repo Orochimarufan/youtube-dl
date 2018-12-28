@@ -88,11 +88,7 @@ from .awaan import (
     AWAANLiveIE,
     AWAANSeasonIE,
 )
-from .azmedien import (
-    AZMedienIE,
-    AZMedienPlaylistIE,
-    AZMedienShowPlaylistIE,
-)
+from .azmedien import AZMedienIE
 from .baidu import BaiduVideoIE
 from .bambuser import BambuserIE, BambuserChannelIE
 from .bandcamp import BandcampIE, BandcampAlbumIE, BandcampWeeklyIE
@@ -198,6 +194,10 @@ from .chirbit import (
     ChirbitProfileIE,
 )
 from .cinchcast import CinchcastIE
+from .ciscolive import (
+    CiscoLiveSessionIE,
+    CiscoLiveSearchIE,
+)
 from .cjsw import CJSWIE
 from .cliphunter import CliphunterIE
 from .clippit import ClippitIE
@@ -209,7 +209,10 @@ from .cloudy import CloudyIE
 from .clubic import ClubicIE
 from .clyp import ClypIE
 from .cmt import CMTIE
-from .cnbc import CNBCIE
+from .cnbc import (
+    CNBCIE,
+    CNBCVideoIE,
+)
 from .cnn import (
     CNNIE,
     CNNBlogsIE,
@@ -481,6 +484,7 @@ from .imdb import (
 from .imgur import (
     ImgurIE,
     ImgurAlbumIE,
+    ImgurGalleryIE,
 )
 from .ina import InaIE
 from .inc import IncIE
@@ -541,6 +545,7 @@ from .la7 import LA7IE
 from .laola1tv import (
     Laola1TvEmbedIE,
     Laola1TvIE,
+    EHFTVIE,
     ITTFIE,
 )
 from .lci import LCIIE
@@ -550,6 +555,11 @@ from .lcp import (
 )
 from .learnr import LearnrIE
 from .lecture2go import Lecture2GoIE
+from .lecturio import (
+    LecturioIE,
+    LecturioCourseIE,
+    LecturioDeCourseIE,
+)
 from .leeco import (
     LeIE,
     LePlaylistIE,
@@ -570,6 +580,10 @@ from .limelight import (
     LimelightChannelListIE,
 )
 from .line import LineTVIE
+from .linkedin import (
+    LinkedInLearningIE,
+    LinkedInLearningCourseIE,
+)
 from .litv import LiTVIE
 from .liveleak import (
     LiveLeakIE,
@@ -1048,7 +1062,7 @@ from .spike import (
 )
 from .stitcher import StitcherIE
 from .sport5 import Sport5IE
-from .sportbox import SportBoxEmbedIE
+from .sportbox import SportBoxIE
 from .sportdeutschland import SportDeutschlandIE
 from .springboardplatform import SpringboardPlatformIE
 from .sprout import SproutIE
@@ -1083,6 +1097,10 @@ from .tass import TassIE
 from .tastytrade import TastyTradeIE
 from .tbs import TBSIE
 from .tdslifeway import TDSLifewayIE
+from .teachable import (
+    TeachableIE,
+    TeachableCourseIE,
+)
 from .teachertube import (
     TeacherTubeIE,
     TeacherTubeUserIE,
@@ -1121,6 +1139,10 @@ from .thisamericanlife import ThisAmericanLifeIE
 from .thisav import ThisAVIE
 from .thisoldhouse import ThisOldHouseIE
 from .threeqsdn import ThreeQSDNIE
+from .tiktok import (
+    TikTokIE,
+    TikTokUserIE,
+)
 from .tinypic import TinyPicIE
 from .tmz import (
     TMZIE,
@@ -1158,7 +1180,6 @@ from .tv2 import (
     TV2ArticleIE,
 )
 from .tv2hu import TV2HuIE
-from .tv3 import TV3IE
 from .tv4 import TV4IE
 from .tv5mondeplus import TV5MondePlusIE
 from .tva import TVAIE
@@ -1195,6 +1216,7 @@ from .tweakers import TweakersIE
 from .twentyfourvideo import TwentyFourVideoIE
 from .twentymin import TwentyMinutenIE
 from .twentythreevideo import TwentyThreeVideoIE
+from .twitcasting import TwitCastingIE
 from .twitch import (
     TwitchVideoIE,
     TwitchChapterIE,
@@ -1227,10 +1249,6 @@ from .uol import UOLIE
 from .uplynk import (
     UplynkIE,
     UplynkPreplayIE,
-)
-from .upskill import (
-    UpskillIE,
-    UpskillCourseIE,
 )
 from .urort import UrortIE
 from .urplay import URPlayIE
@@ -1300,6 +1318,7 @@ from .vimeo import (
     VimeoReviewIE,
     VimeoUserIE,
     VimeoWatchLaterIE,
+    VHXEmbedIE,
 )
 from .vimple import VimpleIE
 from .vine import (
@@ -1387,6 +1406,7 @@ from .wsj import (
     WSJIE,
     WSJArticleIE,
 )
+from .wwe import WWEIE
 from .xbef import XBefIE
 from .xboxclips import XboxClipsIE
 from .xfileshare import XFileShareIE
@@ -1479,3 +1499,4 @@ from .zattoo import (
 )
 from .zdf import ZDFIE, ZDFChannelIE
 from .zingmp3 import ZingMp3IE
+from .zype import ZypeIE
