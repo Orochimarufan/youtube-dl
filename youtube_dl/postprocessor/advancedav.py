@@ -800,7 +800,7 @@ class AdvancedAVPP(PostProcessor):
     def embed_subs(self, out: OutputFile, info: Mapping):
         """ Add the subtitle streams from the external files """
         # Add subtitle streams
-        for lang, sinfo in info['requested_subtitles'].items():
+        for lang, sinfo in (info['requested_subtitles'] or {}).items():
             self.embed_subs_file(out, info["filepath"], lang, sinfo["ext"])
 
     def extract_audio(self, task: Task, filename: str) -> OutputFile:
@@ -914,7 +914,7 @@ class AdvancedAVPP(PostProcessor):
             task_description.append("repack")
 
         # Embed subtitles
-        if self._opts.get("embed_subs") and "subtitles" in information:
+        if self._opts.get("embed_subs") and "requested_subtitles" in information:
             self.embed_subs(main, information)
             task_description.append("embed subtitles")
 
