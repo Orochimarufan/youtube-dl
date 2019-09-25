@@ -28,6 +28,7 @@
  - **acast:channel**
  - **AddAnime**
  - **ADN**: Anime Digital Network
+ - **AdobeConnect**
  - **AdobeTV**
  - **AdobeTVChannel**
  - **AdobeTVShow**
@@ -45,6 +46,7 @@
  - **anderetijden**: npo.nl, ntr.nl, omroepwnl.nl, zapp.nl and npo3.nl
  - **AnimeOnDemand**
  - **Anvato**
+ - **aol.com**
  - **APA**
  - **Aparat**
  - **AppleConnect**
@@ -56,16 +58,8 @@
  - **ARD:mediathek**
  - **ARDBetaMediathek**
  - **Arkena**
- - **arte.tv**
  - **arte.tv:+7**
- - **arte.tv:cinema**
- - **arte.tv:concert**
- - **arte.tv:creative**
- - **arte.tv:ddc**
  - **arte.tv:embed**
- - **arte.tv:future**
- - **arte.tv:info**
- - **arte.tv:magazine**
  - **arte.tv:playlist**
  - **AsianCrush**
  - **AsianCrushPlaylist**
@@ -76,7 +70,6 @@
  - **AudioBoom**
  - **audiomack**
  - **audiomack:album**
- - **auroravid**: AuroraVid
  - **AWAAN**
  - **awaan:live**
  - **awaan:season**
@@ -101,6 +94,7 @@
  - **Bellator**
  - **BellMedia**
  - **Bet**
+ - **bfi:player**
  - **Bigflix**
  - **Bild**: Bild.de
  - **BiliBili**
@@ -147,6 +141,7 @@
  - **CBSInteractive**
  - **CBSLocal**
  - **cbsnews**: CBS News
+ - **cbsnews:embed**
  - **cbsnews:livevideo**: CBS News Live Videos
  - **CBSSports**
  - **CCMA**
@@ -161,6 +156,7 @@
  - **chirbit**
  - **chirbit:profile**
  - **Cinchcast**
+ - **Cinemax**
  - **CiscoLiveSearch**
  - **CiscoLiveSession**
  - **CJSW**
@@ -170,7 +166,6 @@
  - **Clipsyndicate**
  - **CloserToTruth**
  - **CloudflareStream**
- - **cloudtime**: CloudTime
  - **Cloudy**
  - **Clubic**
  - **Clyp**
@@ -190,7 +185,6 @@
  - **Coub**
  - **Cracked**
  - **Crackle**
- - **Criterion**
  - **CrooksAndLiars**
  - **crunchyroll**
  - **crunchyroll:playlist**
@@ -198,6 +192,7 @@
  - **CSpan**: C-SPAN
  - **CtsNews**: 華視新聞
  - **CTVNews**
+ - **cu.ntv.co.jp**: Nippon Television Network
  - **Culturebox**
  - **CultureUnplugged**
  - **curiositystream**
@@ -228,13 +223,13 @@
  - **DiscoveryNetworksDe**
  - **DiscoveryVR**
  - **Disney**
+ - **dlive:stream**
+ - **dlive:vod**
  - **Dotsub**
  - **DouyuShow**
  - **DouyuTV**: 斗鱼
  - **DPlay**
  - **DPlayIt**
- - **dramafever**
- - **dramafever:series**
  - **DRBonanza**
  - **Dropbox**
  - **DrTuber**
@@ -312,9 +307,7 @@
  - **FrontendMastersCourse**
  - **FrontendMastersLesson**
  - **Funimation**
- - **FunkChannel**
- - **FunkMix**
- - **FunnyOrDie**
+ - **Funk**
  - **Fusion**
  - **Fux**
  - **FXNetworks**
@@ -345,7 +338,6 @@
  - **Groupon**
  - **Hark**
  - **hbo**
- - **hbo:episode**
  - **HearThisAt**
  - **Heise**
  - **HellPorno**
@@ -458,6 +450,7 @@
  - **linkedin:learning:course**
  - **LinuxAcademy**
  - **LiTV**
+ - **LiveJournal**
  - **LiveLeak**
  - **LiveLeakEmbed**
  - **livestream**
@@ -485,10 +478,12 @@
  - **MatchTV**
  - **MDR**: MDR.DE and KiKA
  - **media.ccc.de**
+ - **media.ccc.de:lists**
  - **Medialaan**
  - **Mediaset**
  - **Mediasite**
  - **MediasiteCatalog**
+ - **MediasiteNamedCatalog**
  - **Medici**
  - **megaphone.fm**: megaphone.fm embedded players
  - **Meipai**: 美拍
@@ -579,7 +574,6 @@
  - **NextTV**: 壹電視
  - **Nexx**
  - **NexxEmbed**
- - **nfb**: National Film Board of Canada
  - **nfl.com**
  - **NhkVod**
  - **nhl.com**
@@ -605,7 +599,6 @@
  - **nowness**
  - **nowness:playlist**
  - **nowness:series**
- - **nowvideo**: NowVideo
  - **Noz**
  - **npo**: npo.nl, ntr.nl, omroepwnl.nl, zapp.nl and npo3.nl
  - **npo.nl:live**
@@ -621,6 +614,7 @@
  - **NRKTVEpisodes**
  - **NRKTVSeason**
  - **NRKTVSeries**
+ - **NRLTV**
  - **ntv.ru**
  - **Nuvid**
  - **NYTimes**
@@ -630,7 +624,6 @@
  - **OdaTV**
  - **Odnoklassniki**
  - **OktoberfestTV**
- - **on.aol.com**
  - **OnDemandKorea**
  - **onet.pl**
  - **onet.tv**
@@ -671,6 +664,8 @@
  - **Piksel**
  - **Pinkbike**
  - **Pladform**
+ - **Platzi**
+ - **PlatziCourse**
  - **play.fm**
  - **PlayPlusTV**
  - **PlaysTV**
@@ -687,11 +682,11 @@
  - **PopcornTV**
  - **PornCom**
  - **PornerBros**
- - **PornFlip**
  - **PornHd**
  - **PornHub**: PornHub and Thumbzilla
- - **PornHubPlaylist**
- - **PornHubUserVideos**
+ - **PornHubPagedVideoList**
+ - **PornHubUser**
+ - **PornHubUserVideosUpload**
  - **Pornotube**
  - **PornoVoisines**
  - **PornoXO**
@@ -728,6 +723,7 @@
  - **RBMARadio**
  - **RDS**: RDS.ca
  - **RedBullTV**
+ - **RedBullTVRrnContent**
  - **Reddit**
  - **RedditR**
  - **RedTube**
@@ -761,7 +757,6 @@
  - **rtve.es:television**
  - **RTVNH**
  - **RTVS**
- - **Rudo**
  - **RUHD**
  - **rutube**: Rutube videos
  - **rutube:channel**: Rutube channels
@@ -799,6 +794,7 @@
  - **ShowRoomLive**
  - **Sina**
  - **SkylineWebcams**
+ - **SkyNews**
  - **skynewsarabia:article**
  - **skynewsarabia:video**
  - **SkySports**
@@ -849,7 +845,10 @@
  - **StreamCZ**
  - **StreetVoice**
  - **StretchInternet**
+ - **stv:player**
  - **SunPorno**
+ - **sverigesradio:episode**
+ - **sverigesradio:publication**
  - **SVT**
  - **SVTPage**
  - **SVTPlay**: SVT Play and Öppet arkiv
@@ -889,7 +888,6 @@
  - **TF1**
  - **TFO**
  - **TheIntercept**
- - **theoperaplatform**
  - **ThePlatform**
  - **ThePlatformFeed**
  - **TheScene**
@@ -990,6 +988,7 @@
  - **Vbox7**
  - **VeeHD**
  - **Veoh**
+ - **verystream**
  - **Vessel**
  - **Vesti**: Вести.Ru
  - **Vevo**
@@ -1013,7 +1012,6 @@
  - **videomore:video**
  - **VideoPremium**
  - **VideoPress**
- - **videoweed**: VideoWeed
  - **Vidio**
  - **VidLii**
  - **vidme**
@@ -1060,7 +1058,7 @@
  - **VoxMediaVolume**
  - **vpro**: npo.nl, ntr.nl, omroepwnl.nl, zapp.nl and npo3.nl
  - **Vrak**
- - **VRT**: deredactie.be, sporza.be, cobra.be and cobra.canvas.be
+ - **VRT**: VRT NWS, Flanders News, Flandern Info and Sporza
  - **VrtNU**: VrtNU.be
  - **vrv**
  - **vrv:series**
@@ -1090,13 +1088,10 @@
  - **Weibo**
  - **WeiboMobile**
  - **WeiqiTV**: WQTV
- - **wholecloud**: WholeCloud
  - **Wimp**
  - **Wistia**
  - **wnl**: npo.nl, ntr.nl, omroepwnl.nl, zapp.nl and npo3.nl
  - **WorldStarHipHop**
- - **wrzuta.pl**
- - **wrzuta.pl:playlist**
  - **WSJ**: Wall Street Journal
  - **WSJArticle**
  - **WWE**
@@ -1105,6 +1100,7 @@
  - **XFileShare**: XFileShare based sites: DaClips, FileHoot, GorillaVid, MovPod, PowerWatch, Rapidvideo.ws, TheVideoBee, Vidto, Streamin.To, XVIDSTAGE, Vid ABC, VidBom, vidlo, RapidVideo.TV, FastVideo.me
  - **XHamster**
  - **XHamsterEmbed**
+ - **XHamsterUser**
  - **xiami:album**: 虾米音乐 - 专辑
  - **xiami:artist**: 虾米音乐 - 歌手
  - **xiami:collection**: 虾米音乐 - 精选集
@@ -1120,6 +1116,9 @@
  - **XVideos**
  - **XXXYMovies**
  - **Yahoo**: Yahoo screen and movies
+ - **yahoo:gyao**
+ - **yahoo:gyao:player**
+ - **yahoo:japannews**: Yahoo! Japan News
  - **YandexDisk**
  - **yandexmusic:album**: Яндекс.Музыка - Альбом
  - **yandexmusic:playlist**: Яндекс.Музыка - Плейлист

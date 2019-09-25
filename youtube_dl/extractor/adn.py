@@ -60,14 +60,20 @@ class ADNIE(InfoExtractor):
 
         enc_subtitles = self._download_webpage(
             urljoin(self._BASE_URL, sub_path),
-            video_id, 'Downloading subtitles data', fatal=False)
+            video_id, 'Downloading subtitles location', fatal=False) or '{}'
+        subtitle_location = (self._parse_json(enc_subtitles, video_id, fatal=False) or {}).get('location')
+        if subtitle_location:
+            enc_subtitles = self._download_webpage(
+                urljoin(self._BASE_URL, subtitle_location),
+                video_id, 'Downloading subtitles data', fatal=False,
+                headers={'Origin': 'https://animedigitalnetwork.fr'})
         if not enc_subtitles:
             return None
 
         # http://animedigitalnetwork.fr/components/com_vodvideo/videojs/adn-vjs.min.js
         dec_subtitles = intlist_to_bytes(aes_cbc_decrypt(
             bytes_to_intlist(compat_b64decode(enc_subtitles[24:])),
-            bytes_to_intlist(binascii.unhexlify(self._K + '083db5aebd9353b4')),
+            bytes_to_intlist(binascii.unhexlify(self._K + '4b8ef13ec1872730')),
             bytes_to_intlist(compat_b64decode(enc_subtitles[:24]))
         ))
         subtitles_json = self._parse_json(
@@ -81,10 +87,10 @@ class ADNIE(InfoExtractor):
             ssa = '''[Script Info]
 ScriptType:V4.00
 [V4 Styles]
-Format:Name,Fontname,Fontsize,PrimaryColour,Bold,BorderStyle,Outline,Alignment,MarginL,MarginR,MarginV
-Style:Default,Arial,18,16777215,-1,1,1,2,20,20,20
+Format: Name,Fontname,Fontsize,PrimaryColour,SecondaryColour,TertiaryColour,BackColour,Bold,Italic,BorderStyle,Outline,Shadow,Alignment,MarginL,MarginR,MarginV,AlphaLevel,Encoding
+Style: Default,Arial,18,16777215,16777215,16777215,0,-1,0,1,1,0,2,20,20,20,0,0
 [Events]
-Format:Marked,Start,End,Style,Text'''
+Format: Marked,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text'''
             for current in sub:
                 start, end, text, line_align, position_align = (
                     float_or_none(current.get('startTime')),
@@ -94,7 +100,7 @@ Format:Marked,Start,End,Style,Text'''
                 if start is None or end is None or text is None:
                     continue
                 alignment = self._POS_ALIGN_MAP.get(position_align, 2) + self._LINE_ALIGN_MAP.get(line_align, 0)
-                ssa += os.linesep + 'Dialogue:Marked=0,%s,%s,Default,%s%s' % (
+                ssa += os.linesep + 'Dialogue: Marked=0,%s,%s,Default,,0,0,0,,%s%s' % (
                     self._ass_subtitles_timecode(start),
                     self._ass_subtitles_timecode(end),
                     '{\\a%d}' % alignment if alignment != 2 else '',
