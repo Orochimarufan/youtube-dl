@@ -905,8 +905,7 @@ class AdvancedAVPP(PostProcessor):
             task_description.append("merge")
         else:
             # Add main video file
-            print(main.map_all_streams(information["filepath"]))
-            print(task.inputs[0].streams)
+            main.map_all_streams(information["filepath"])
 
         # Repacking
         if self._opts.get("repack_container"):
